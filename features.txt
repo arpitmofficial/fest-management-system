@@ -1,0 +1,9 @@
+Roles
+1) Participant
+    iiit student
+    non-iiit participant
+2) Organizer
+    Clubs
+    Councils
+    Fest Teams
+3) Admin
