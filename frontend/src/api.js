@@ -1,7 +1,8 @@
 import axios from 'axios';
 
+// Use environment variable or fallback to deployed URL
 const api = axios.create({
-  baseURL: 'https://fest-management-system-api.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://fest-management-system-api.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },

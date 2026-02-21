@@ -13,28 +13,29 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Attach user to request based on role
+            let user;
             if (decoded.role === 'admin') {
-                req.user = await Admin.findById(decoded.id).select('-password');
+                user = await Admin.findById(decoded.id).select('-password');
             } else if (decoded.role === 'organizer') {
-                req.user = await Organizer.findById(decoded.id).select('-password');
+                user = await Organizer.findById(decoded.id).select('-password');
             } else {
-                req.user = await Participant.findById(decoded.id).select('-password');
+                user = await Participant.findById(decoded.id).select('-password');
             }
 
-            if (!req.user) {
+            if (!user) {
                 return res.status(401).json({ message: 'User not found' });
             }
 
+            // Convert to plain object and add role
+            req.user = user.toObject();
             req.user.role = decoded.role;
             next();
         } catch (error) {
             console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed' });
+            return res.status(401).json({ message: 'Not authorized, token failed' });
         }
-    }
-
-    if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+    } else {
+        return res.status(401).json({ message: 'Not authorized, no token' });
     }
 };
 

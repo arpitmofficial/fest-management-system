@@ -20,11 +20,11 @@ const OrganizerProfile = () => {
       const { data } = await api.get('/organizers/profile');
       setProfile(data);
       setFormData({
-        organizerName: data.organizerName,
-        category: data.category,
-        description: data.description,
-        contactEmail: data.contactEmail,
-        contactNumber: data.contactNumber,
+        organizerName: data.organizerName || '',
+        category: data.category || 'Technical',
+        description: data.description || '',
+        contactEmail: data.contactEmail || '',
+        contactNumber: data.contactNumber || '',
         discordWebhook: data.discordWebhook || ''
       });
     } catch (error) {
@@ -38,11 +38,23 @@ const OrganizerProfile = () => {
     e.preventDefault();
     setMessage('');
     try {
-      await api.put('/organizers/profile', formData);
+      // Only send non-empty fields
+      const payload = {};
+      if (formData.organizerName) payload.organizerName = formData.organizerName;
+      if (formData.category) payload.category = formData.category;
+      payload.description = formData.description || '';
+      if (formData.contactEmail) payload.contactEmail = formData.contactEmail;
+      payload.contactNumber = formData.contactNumber || '';
+      payload.discordWebhook = formData.discordWebhook || '';
+
+      console.log('Sending update:', payload);
+      const { data } = await api.put('/organizers/profile', payload);
+      console.log('Update response:', data);
       setMessage('Profile updated successfully');
       setEditing(false);
       fetchProfile();
     } catch (error) {
+      console.error('Update error:', error.response?.data || error);
       setMessage(error.response?.data?.message || 'Update failed');
     }
   };

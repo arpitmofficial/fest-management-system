@@ -22,21 +22,29 @@ const updateProfile = async (req, res) => {
     try {
         const { firstName, lastName, contactNumber, collegeName, interests } = req.body;
 
-        const participant = await Participant.findById(req.user._id);
+        // Build update object
+        const updateFields = {};
+        if (firstName) updateFields.firstName = firstName;
+        if (lastName) updateFields.lastName = lastName;
+        if (contactNumber) updateFields.contactNumber = contactNumber;
+        if (interests) updateFields.interests = interests;
 
-        if (firstName) participant.firstName = firstName;
-        if (lastName) participant.lastName = lastName;
-        if (contactNumber) participant.contactNumber = contactNumber;
-        if (collegeName && participant.participantType !== 'IIIT') {
-            participant.collegeName = collegeName;
+        // Only allow collegeName update for Non-IIIT participants
+        const currentParticipant = await Participant.findById(req.user._id);
+        if (collegeName && currentParticipant.participantType !== 'IIIT') {
+            updateFields.collegeName = collegeName;
         }
-        if (interests) participant.interests = interests;
 
-        await participant.save();
+        const participant = await Participant.findByIdAndUpdate(
+            req.user._id,
+            updateFields,
+            { new: true, runValidators: true }
+        ).populate('followedOrganizers', 'organizerName category');
+
         res.json(participant);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 

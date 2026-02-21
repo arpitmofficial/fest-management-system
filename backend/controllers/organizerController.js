@@ -21,22 +21,41 @@ const getProfile = async (req, res) => {
 // @access  Private (Organizer)
 const updateProfile = async (req, res) => {
     try {
+        console.log('Update profile request:', req.body);
+        console.log('User ID:', req.user._id);
+        
         const { organizerName, category, description, contactEmail, contactNumber, discordWebhook } = req.body;
 
-        const organizer = await Organizer.findById(req.user._id);
+        // Build update object - only include fields that are provided
+        const updateFields = {};
+        if (organizerName) updateFields.organizerName = organizerName;
+        if (category) updateFields.category = category;
+        if (description !== undefined) updateFields.description = description;
+        if (contactEmail) updateFields.contactEmail = contactEmail;
+        if (contactNumber !== undefined) updateFields.contactNumber = contactNumber;
+        if (discordWebhook !== undefined) updateFields.discordWebhook = discordWebhook;
 
-        if (organizerName) organizer.organizerName = organizerName;
-        if (category) organizer.category = category;
-        if (description) organizer.description = description;
-        if (contactEmail) organizer.contactEmail = contactEmail;
-        if (contactNumber) organizer.contactNumber = contactNumber;
-        if (discordWebhook !== undefined) organizer.discordWebhook = discordWebhook;
+        console.log('Update fields:', updateFields);
 
-        await organizer.save();
+        const organizer = await Organizer.findByIdAndUpdate(
+            req.user._id,
+            { $set: updateFields },
+            { new: true }
+        );
+
+        if (!organizer) {
+            return res.status(404).json({ message: 'Organizer not found' });
+        }
+
+        console.log('Update successful:', organizer);
         res.json(organizer);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error('Update profile error:', error);
+        // Handle duplicate key error for organizerName
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Organizer name already exists' });
+        }
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 
