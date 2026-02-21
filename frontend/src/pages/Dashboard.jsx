@@ -16,10 +16,10 @@ const Dashboard = () => {
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
-        <h1>Welcome, {user.firstName || user.organizerName || 'Admin'}!</h1>
-        <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
+        <h1 style={{ fontSize: '24px' }}>Welcome, {user.firstName || user.organizerName || 'Admin'}!</h1>
+        <button onClick={handleLogout} style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}>
           Logout
         </button>
       </header>
@@ -70,11 +70,11 @@ const Dashboard = () => {
 const cardStyle = {
   border: '1px solid #ddd',
   padding: '20px',
-  borderRadius: '8px',
-  width: '200px',
+  borderRadius: '4px',
+  width: '180px',
   textAlign: 'center',
   cursor: 'pointer',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+  fontSize: '14px'
 };
 
 export default Dashboard;

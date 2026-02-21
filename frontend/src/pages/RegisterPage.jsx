@@ -35,7 +35,7 @@ const RegisterPage = () => {
       };
 
       // 2. Send to Backend
-      const { data } = await api.post('/register', payload);
+      const { data } = await api.post('/auth/register', payload);
 
       // 3. Auto-Login the user
       login(data, data.token);
@@ -49,9 +49,10 @@ const RegisterPage = () => {
   };
 
   return (
-    <div style={{ maxWidth: '500px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2>Create Participant Account</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div style={{ maxWidth: '400px', margin: '60px auto', padding: '20px' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '5px' }}>Create Account</h2>
+      <p style={{ textAlign: 'center', marginBottom: '25px', color: '#666', fontSize: '14px' }}>(Participants only)</p>
+      {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
       
       <form onSubmit={handleSubmit}>
         {/* Name Fields */}
@@ -94,7 +95,7 @@ const RegisterPage = () => {
           <input name="interests" placeholder="Interests (e.g. Coding, Dance, Art)" onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
         </div>
 
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}>
           Register
         </button>
       </form>

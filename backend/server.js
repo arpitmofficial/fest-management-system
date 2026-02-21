@@ -2,19 +2,32 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+
+// Import Routes
 const authRoutes = require('./routes/authRoutes');
+const eventRoutes = require('./routes/eventRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
+const participantRoutes = require('./routes/participantRoutes');
+const organizerRoutes = require('./routes/organizerRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const feedbackRoutes = require('./routes/feedbackRoutes');
 
 connectDB();
 
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-// 2. Mount the Routes
-// This tells the server: "Any URL that starts with /api/auth, send it to authRoutes"
+// Mount Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/participants', participantRoutes);
+app.use('/api/organizers', organizerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

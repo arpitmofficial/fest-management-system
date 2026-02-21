@@ -41,7 +41,7 @@ const organizerSchema = new mongoose.Schema
     },
     contactNumber: {
         type: String,
-        required: [true, 'Please add a contact number']
+        default: ''
     },
 
     discordWebhook: {
