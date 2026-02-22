@@ -14,6 +14,16 @@ const ManageEvent = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
+  
+  // Form editing state
+  const [editingForm, setEditingForm] = useState(false);
+  const [customFields, setCustomFields] = useState([]);
+  const [newField, setNewField] = useState({
+    fieldName: '',
+    fieldType: 'text',
+    required: false,
+    options: ''
+  });
 
   useEffect(() => {
     fetchEvent();
@@ -26,6 +36,7 @@ const ManageEvent = () => {
     try {
       const { data } = await api.get(`/events/${id}`);
       setEvent(data);
+      setCustomFields(data.customFields || []);
     } catch (error) {
       console.error('Error fetching event:', error);
     } finally {
@@ -119,6 +130,37 @@ const ManageEvent = () => {
     a.click();
   };
 
+  // Form editing functions
+  const addCustomField = () => {
+    if (!newField.fieldName) return;
+    const field = {
+      ...newField,
+      options: newField.options ? newField.options.split(',').map(o => o.trim()) : [],
+      order: customFields.length
+    };
+    setCustomFields([...customFields, field]);
+    setNewField({ fieldName: '', fieldType: 'text', required: false, options: '' });
+  };
+
+  const removeCustomField = (index) => {
+    setCustomFields(customFields.filter((_, i) => i !== index));
+  };
+
+  const saveFormChanges = async () => {
+    try {
+      console.log('Saving customFields:', customFields);
+      await api.put(`/events/${id}`, { customFields });
+      setMessage('Form updated successfully');
+      setEditingForm(false);
+      fetchEvent();
+    } catch (error) {
+      console.error('Save form error:', error.response?.data);
+      setMessage(error.response?.data?.error || error.response?.data?.message || 'Failed to update form');
+    }
+  };
+
+  const canEditForm = !event?.formLocked && event?.registrationCount === 0;
+
   const tabStyle = (active) => ({
     padding: '10px 20px',
     border: 'none',
@@ -186,6 +228,7 @@ const ManageEvent = () => {
             <button style={tabStyle(activeTab === 'overview')} onClick={() => setActiveTab('overview')}>Overview</button>
             <button style={tabStyle(activeTab === 'participants')} onClick={() => setActiveTab('participants')}>Participants</button>
             <button style={tabStyle(activeTab === 'analytics')} onClick={() => setActiveTab('analytics')}>Analytics</button>
+            <button style={tabStyle(activeTab === 'form')} onClick={() => setActiveTab('form')}>Form</button>
           </div>
           <Link 
             to={`/organizer/events/${id}/scan`}
@@ -330,6 +373,132 @@ const ManageEvent = () => {
                     {fb.comment && <p style={{ margin: 0, fontSize: '14px' }}>{fb.comment}</p>}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Form Tab */}
+        {activeTab === 'form' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>Custom Registration Form Fields</h3>
+              {canEditForm && !editingForm && (
+                <button 
+                  onClick={() => setEditingForm(true)}
+                  style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Edit Form
+                </button>
+              )}
+            </div>
+
+            {!canEditForm && (
+              <p style={{ color: '#666', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>
+                Form editing is locked because {event?.formLocked ? 'the form has been locked manually' : 'there are registrations for this event'}.
+              </p>
+            )}
+
+            {customFields.length === 0 && !editingForm ? (
+              <p style={{ color: '#666' }}>No custom fields defined. Participants will only fill basic registration info.</p>
+            ) : (
+              <div>
+                {customFields.map((field, index) => (
+                  <div key={index} style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '15px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{field.fieldName} {field.required && <span style={{ color: 'red' }}>*</span>}</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                        Type: {field.fieldType}
+                        {field.options?.length > 0 && ` | Options: ${field.options.join(', ')}`}
+                      </p>
+                    </div>
+                    {editingForm && (
+                      <button 
+                        onClick={() => removeCustomField(index)}
+                        style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {editingForm && (
+              <div style={{ marginTop: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Add New Field</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Field Name</label>
+                    <input 
+                      type="text"
+                      value={newField.fieldName}
+                      onChange={(e) => setNewField({ ...newField, fieldName: e.target.value })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                      placeholder="e.g., College Name"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Type</label>
+                    <select 
+                      value={newField.fieldType}
+                      onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    >
+                      <option value="text">Text</option>
+                      <option value="textarea">Textarea</option>
+                      <option value="number">Number</option>
+                      <option value="dropdown">Dropdown</option>
+                      <option value="checkbox">Checkbox</option>
+                      <option value="date">Date</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>
+                      Options (comma sep, for dropdown)
+                    </label>
+                    <input 
+                      type="text"
+                      value={newField.options}
+                      onChange={(e) => setNewField({ ...newField, options: e.target.value })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                      placeholder="Option1, Option2"
+                      disabled={newField.fieldType !== 'dropdown' && newField.fieldType !== 'checkbox'}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
+                      <input 
+                        type="checkbox"
+                        checked={newField.required}
+                        onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
+                      />
+                      Required
+                    </label>
+                    <button 
+                      onClick={addCustomField}
+                      style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={saveFormChanges}
+                    style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Save Changes
+                  </button>
+                  <button 
+                    onClick={() => { setEditingForm(false); setCustomFields(event?.customFields || []); }}
+                    style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

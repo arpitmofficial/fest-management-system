@@ -154,8 +154,14 @@ const updateEvent = async (req, res) => {
                 }
             });
         } else if (currentStatus === 'published') {
-            // Allow limited updates
+            // Allow limited updates - customFields only if no registrations yet
             const allowedFields = ['eventDescription', 'registrationDeadline', 'registrationLimit', 'status'];
+            
+            // Allow customFields update only if form is not locked (no registrations)
+            if (!event.formLocked && event.registrationCount === 0) {
+                allowedFields.push('customFields');
+            }
+            
             Object.keys(updates).forEach(key => {
                 if (!allowedFields.includes(key)) {
                     delete updates[key];
@@ -172,8 +178,8 @@ const updateEvent = async (req, res) => {
         event = await Event.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
         res.json(event);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+        console.error('Update Event Error:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };
 

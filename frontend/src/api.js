@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Use environment variable or fallback to deployed URL
+// Use environment variable or fallback to localhost
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://fest-management-system-api.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },

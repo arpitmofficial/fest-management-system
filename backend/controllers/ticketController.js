@@ -7,7 +7,13 @@ const QRCode = require('qrcode');
 // @access  Private (Participant)
 const registerForEvent = async (req, res) => {
     try {
+        console.log('=== REGISTRATION START ===');
+        console.log('Registration request body:', JSON.stringify(req.body));
+        console.log('User:', JSON.stringify(req.user));
+        console.log('Event ID:', req.params.eventId);
+        
         const event = await Event.findById(req.params.eventId);
+        console.log('Event found:', event ? event.eventName : 'NOT FOUND');
 
         if (!event) {
             return res.status(404).json({ message: 'Event not found' });
@@ -46,35 +52,60 @@ const registerForEvent = async (req, res) => {
             return res.status(400).json({ message: 'You are already registered for this event' });
         }
 
-        // Create ticket
+        // Generate ticket ID
+        const prefix = 'TKT';
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const ticketId = `${prefix}-${timestamp}-${random}`;
+
+        // Create ticket - handle formData properly
+        const registrationData = req.body.formData || req.body || {};
+        
         const ticketData = {
+            ticketId,
             event: req.params.eventId,
             participant: req.user._id,
-            registrationData: req.body.formData || {},
+            registrationData: registrationData,
             status: event.registrationFee > 0 ? 'pending' : 'confirmed'
         };
 
-        const ticket = await Ticket.create(ticketData);
+        console.log('Creating ticket with data:', JSON.stringify(ticketData));
+        
+        let ticket;
+        try {
+            ticket = await Ticket.create(ticketData);
+            console.log('Ticket created:', ticket._id);
+        } catch (createError) {
+            console.error('Ticket.create error:', createError);
+            return res.status(500).json({ message: 'Failed to create ticket', error: createError.message });
+        }
 
         // Generate QR code
-        const qrData = JSON.stringify({
-            ticketId: ticket.ticketId,
-            eventId: event._id,
-            participantId: req.user._id
-        });
-        ticket.qrCode = await QRCode.toDataURL(qrData);
-        await ticket.save();
-
-        // Increment registration count
-        event.registrationCount += 1;
-        if (event.registrationCount > 0) {
-            event.formLocked = true;
+        try {
+            const qrData = JSON.stringify({
+                ticketId: ticket.ticketId,
+                eventId: event._id.toString(),
+                participantId: req.user._id.toString()
+            });
+            
+            ticket.qrCode = await QRCode.toDataURL(qrData);
+            await ticket.save();
+            console.log('QR code generated');
+        } catch (qrError) {
+            console.error('QR code error:', qrError);
+            // Continue without QR code
         }
-        await event.save();
 
+        // Increment registration count and lock form
+        await Event.findByIdAndUpdate(req.params.eventId, {
+            $inc: { registrationCount: 1 },
+            $set: { formLocked: true }
+        });
+
+        console.log('Ticket created successfully:', ticket.ticketId);
         res.status(201).json(ticket);
     } catch (error) {
-        console.error(error);
+        console.error('Registration error:', error);
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 };

@@ -77,16 +77,29 @@ const QRScanner = () => {
     }
   };
 
-  const verifyTicket = async (qrCode) => {
+  const verifyTicket = async (codeInput) => {
     try {
-      const { data } = await api.post('/tickets/verify', { qrCode, eventId: id });
+      // Try to parse as JSON (from QR code scan)
+      let ticketId = codeInput;
+      try {
+        const parsed = JSON.parse(codeInput);
+        ticketId = parsed.ticketId || codeInput;
+      } catch {
+        // Not JSON, use as-is (manual ticket code entry)
+      }
+
+      const { data } = await api.post('/tickets/verify', { ticketId, eventId: id });
+      const ticket = data.ticket;
       setResult({
         success: true,
-        message: `✓ ${data.participant.firstName} ${data.participant.lastName}`,
-        details: data
+        message: data.alreadyAttended 
+          ? `⚠ ${ticket.participant.firstName} ${ticket.participant.lastName} - Already attended`
+          : `✓ ${ticket.participant.firstName} ${ticket.participant.lastName}`,
+        details: ticket,
+        alreadyAttended: data.alreadyAttended
       });
       setRecentScans(prev => [{
-        name: `${data.participant.firstName} ${data.participant.lastName}`,
+        name: `${ticket.participant.firstName} ${ticket.participant.lastName}`,
         time: new Date().toLocaleTimeString(),
         success: true
       }, ...prev.slice(0, 9)]);
@@ -112,12 +125,13 @@ const QRScanner = () => {
   };
 
   const markAttendance = async () => {
-    if (!result?.details?.ticketId) return;
+    if (!result?.details?._id) return;
     try {
-      await api.put(`/tickets/${result.details.ticketId}/attend`);
+      await api.put(`/tickets/${result.details._id}/attend`);
       setResult(prev => ({
         ...prev,
-        message: prev.message + ' - Attendance Marked!'
+        message: `✓ ${result.details.participant.firstName} ${result.details.participant.lastName} - Attendance Marked!`,
+        alreadyAttended: true
       }));
     } catch (error) {
       setResult(prev => ({
@@ -201,14 +215,19 @@ const QRScanner = () => {
             {result.success && result.details && (
               <div>
                 <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                  Ticket: {result.details.ticketId}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '14px' }}>
                   Email: {result.details.participant?.email}
                 </p>
                 <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                  Type: {result.details.participant?.participantType}
+                  Status: {result.details.status}
                 </p>
-                <button onClick={markAttendance} style={{ ...buttonStyle, marginTop: '10px', backgroundColor: '#2e7d32' }}>
-                  Mark Attendance
-                </button>
+                {!result.alreadyAttended && (
+                  <button onClick={markAttendance} style={{ ...buttonStyle, marginTop: '10px', backgroundColor: '#2e7d32' }}>
+                    Mark Attendance
+                  </button>
+                )}
               </div>
             )}
           </div>

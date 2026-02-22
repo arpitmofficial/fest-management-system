@@ -65,14 +65,13 @@ const ticketSchema = new mongoose.Schema({
 });
 
 // Generate unique ticket ID before saving
-ticketSchema.pre('save', async function(next) {
+ticketSchema.pre('save', async function() {
     if (!this.ticketId) {
         const prefix = 'TKT';
         const timestamp = Date.now().toString(36).toUpperCase();
         const random = Math.random().toString(36).substring(2, 6).toUpperCase();
         this.ticketId = `${prefix}-${timestamp}-${random}`;
     }
-    next();
 });
 
 module.exports = mongoose.model('Ticket', ticketSchema);

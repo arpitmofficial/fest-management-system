@@ -31,7 +31,7 @@ const EventDetails = () => {
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setRegistering(true);
     setMessage('');
 
@@ -44,12 +44,14 @@ const EventDetails = () => {
         });
       } else {
         // Normal registration
+        console.log('Registering with formData:', formData);
         await api.post(`/tickets/register/${id}`, { formData });
       }
       setMessage('Registration successful! Check your tickets.');
       setTimeout(() => navigate('/participant/dashboard'), 2000);
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', error.response?.data);
+      setMessage(error.response?.data?.error || error.response?.data?.message || 'Registration failed');
     } finally {
       setRegistering(false);
     }
@@ -141,7 +143,7 @@ const EventDetails = () => {
                           style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px', minHeight: '80px' }}
                         />
                       )}
-                      {field.fieldType === 'dropdown' && (
+                      {(field.fieldType === 'dropdown' || field.fieldType === 'select') && (
                         <select
                           required={field.required}
                           onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.value })}
@@ -152,6 +154,52 @@ const EventDetails = () => {
                             <option key={i} value={opt}>{opt}</option>
                           ))}
                         </select>
+                      )}
+                      {field.fieldType === 'checkbox' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                          {field.options?.length > 0 ? (
+                            field.options.map((opt, i) => (
+                              <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px' }}>
+                                <input
+                                  type="checkbox"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const current = formData[field.fieldName] || [];
+                                    const updated = e.target.checked
+                                      ? [...current, opt]
+                                      : current.filter(v => v !== opt);
+                                    setFormData({ ...formData, [field.fieldName]: updated });
+                                  }}
+                                />
+                                {opt}
+                              </label>
+                            ))
+                          ) : (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px' }}>
+                              <input
+                                type="checkbox"
+                                onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.checked })}
+                              />
+                              Yes
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      {field.fieldType === 'number' && (
+                        <input
+                          type="number"
+                          required={field.required}
+                          onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.value })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        />
+                      )}
+                      {field.fieldType === 'date' && (
+                        <input
+                          type="date"
+                          required={field.required}
+                          onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.value })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        />
                       )}
                     </div>
                   ))}
