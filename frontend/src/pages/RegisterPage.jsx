@@ -14,7 +14,7 @@ const RegisterPage = () => {
     collegeName: '',
     interests: '' // Comma separated string for now
   });
-  
+
   const [error, setError] = useState('');
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ const RegisterPage = () => {
       login(data, data.token);
 
       // 4. Redirect to Dashboard
-      navigate('/dashboard');
+      navigate('/onboarding');
 
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
@@ -53,7 +53,7 @@ const RegisterPage = () => {
       <h2 style={{ textAlign: 'center', marginBottom: '5px' }}>Create Account</h2>
       <p style={{ textAlign: 'center', marginBottom: '25px', color: '#666', fontSize: '14px' }}>(Participants only)</p>
       {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
-      
+
       <form onSubmit={handleSubmit}>
         {/* Name Fields */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>

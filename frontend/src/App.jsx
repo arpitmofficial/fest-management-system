@@ -14,6 +14,8 @@ import BrowseEvents from './pages/BrowseEvents';
 import EventDetails from './pages/EventDetails';
 import Profile from './pages/Profile';
 import Clubs from './pages/Clubs';
+import Onboarding from './pages/Onboarding';
+import OrganizerDetail from './pages/OrganizerDetail';
 
 // Organizer Pages
 import OrganizerDashboard from './pages/OrganizerDashboard';
@@ -22,6 +24,7 @@ import ManageEvent from './pages/ManageEvent';
 import OrganizerProfile from './pages/OrganizerProfile';
 import QRScanner from './pages/QRScanner';
 import EventFeedback from './pages/EventFeedback';
+import OngoingEvents from './pages/OngoingEvents';
 
 // Admin Pages
 import AdminDashboard from './pages/AdminDashboard';
@@ -31,9 +34,9 @@ import PasswordRequests from './pages/PasswordRequests';
 // Role-based dashboard redirect
 const DashboardRedirect = () => {
   const { user } = useContext(AuthContext);
-  
+
   if (!user) return <Navigate to="/login" replace />;
-  
+
   switch (user.role) {
     case 'admin':
       return <Navigate to="/admin/dashboard" replace />;
@@ -48,12 +51,12 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
-      
+
       {/* Auth Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={<DashboardRedirect />} />
-      
+
       {/* Participant Routes */}
       <Route path="/participant/dashboard" element={
         <ProtectedRoute allowedRoles={['participant']}>
@@ -85,7 +88,17 @@ function AppRoutes() {
           <Clubs />
         </ProtectedRoute>
       } />
-      
+      <Route path="/clubs/:id" element={
+        <ProtectedRoute allowedRoles={['participant']}>
+          <OrganizerDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding" element={
+        <ProtectedRoute allowedRoles={['participant']}>
+          <Onboarding />
+        </ProtectedRoute>
+      } />
+
       {/* Organizer Routes */}
       <Route path="/organizer/dashboard" element={
         <ProtectedRoute allowedRoles={['organizer']}>
@@ -112,7 +125,12 @@ function AppRoutes() {
           <OrganizerProfile />
         </ProtectedRoute>
       } />
-      
+      <Route path="/organizer/ongoing" element={
+        <ProtectedRoute allowedRoles={['organizer']}>
+          <OngoingEvents />
+        </ProtectedRoute>
+      } />
+
       {/* Admin Routes */}
       <Route path="/admin/dashboard" element={
         <ProtectedRoute allowedRoles={['admin']}>

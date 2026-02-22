@@ -61,6 +61,7 @@ const Navbar = () => {
           <>
             <Link to="/organizer/dashboard" style={linkStyle}>Dashboard</Link>
             <Link to="/organizer/events/create" style={linkStyle}>Create Event</Link>
+            <Link to="/organizer/ongoing" style={linkStyle}>Ongoing Events</Link>
             <Link to="/organizer/profile" style={linkStyle}>Profile</Link>
           </>
         )}

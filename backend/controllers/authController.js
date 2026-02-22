@@ -4,8 +4,7 @@ const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const generateToken = (id, role) =>
-{
+const generateToken = (id, role) => {
     return jwt.sign({ id, role }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
@@ -14,31 +13,26 @@ const generateToken = (id, role) =>
 // @desc    Register a new participant
 // @route   POST /api/auth/register
 // @access  Public
-const registerParticipant = async (req, res) =>
-{
-    try
-    {
+const registerParticipant = async (req, res) => {
+    try {
         const
-        { 
-            firstName, lastName, email, password, 
-            contactNumber, participantType, collegeName, interests 
-        } = req.body;
+            {
+                firstName, lastName, email, password,
+                contactNumber, participantType, collegeName, interests
+            } = req.body;
 
         // required fields
-        if(!firstName || !lastName || !email || !password || !contactNumber || !participantType)
-        {
-            return res.status(400).json({message: 'Please fill in all required fields'});
+        if (!firstName || !lastName || !email || !password || !contactNumber || !participantType) {
+            return res.status(400).json({ message: 'Please fill in all required fields' });
         }
 
         // iiit email
-        if(participantType === 'IIIT')
-        {
+        if (participantType === 'IIIT') {
             const allowedDomains = ['@iiit.ac.in', '@students.iiit.ac.in', '@research.iiit.ac.in'];
             const isValidIIITEmail = allowedDomains.some(domain => email.endsWith(domain));
-            
-            if(!isValidIIITEmail)
-            {
-                return res.status(400).json({message: 'Use a valid IIIT email for IIIT participants'});
+
+            if (!isValidIIITEmail) {
+                return res.status(400).json({ message: 'Use a valid IIIT email for IIIT participants' });
             }
         }
 
@@ -59,8 +53,7 @@ const registerParticipant = async (req, res) =>
             interests
         });
 
-        if(participant)
-        {
+        if (participant) {
             res.status(201).json({
                 _id: participant.id,
                 firstName: participant.firstName,
@@ -69,14 +62,12 @@ const registerParticipant = async (req, res) =>
                 token: generateToken(participant.id, 'participant')
             });
         }
-        else
-        {
+        else {
             res.status(400).json({ message: 'Invalid user data' });
         }
 
     }
-    catch (error)
-    {
+    catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
     }
@@ -85,34 +76,32 @@ const registerParticipant = async (req, res) =>
 // @desc    Login user & get token
 // @route   POST /api/auth/login
 // @access  Public
-const loginUser = async (req, res) =>
-{
+const loginUser = async (req, res) => {
     const { email, password, role } = req.body;
 
-    if(!role)
-    {
+    if (!role) {
         return res.status(400).json({ message: "Please select a role (participant/organizer/admin)" });
     }
 
-    try
-    {
+    try {
         let user;
-        
-        if(role === 'admin')
-        {
+
+        if (role === 'admin') {
             user = await Admin.findOne({ email }).select('+password');
         }
-        else if(role === 'organizer')
-        {
-            user = await Organizer.findOne({ loginEmail: email }).select('+password'); 
+        else if (role === 'organizer') {
+            user = await Organizer.findOne({ loginEmail: email }).select('+password');
         }
-        else
-        {
+        else {
             user = await Participant.findOne({ email }).select('+password');
         }
 
-        if(user && (await user.matchPassword(password)))
-        {
+        if (user && (await user.matchPassword(password))) {
+            // Check if organizer account is disabled
+            if (role === 'organizer' && user.active === false) {
+                return res.status(403).json({ message: 'This organizer account has been disabled. Contact admin.' });
+            }
+
             res.json({
                 _id: user.id,
                 email: role === 'organizer' ? user.loginEmail : user.email,
@@ -122,14 +111,12 @@ const loginUser = async (req, res) =>
                 token: generateToken(user.id, role)
             });
         }
-        else
-        {
+        else {
             res.status(401).json({ message: 'Invalid email or password' });
         }
 
     }
-    catch(error)
-    {
+    catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
     }

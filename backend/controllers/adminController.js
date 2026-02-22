@@ -20,8 +20,8 @@ const createOrganizer = async (req, res) => {
         const generatedPassword = generatePassword();
 
         // Check if organizer already exists
-        const existingOrganizer = await Organizer.findOne({ 
-            $or: [{ loginEmail }, { organizerName }] 
+        const existingOrganizer = await Organizer.findOne({
+            $or: [{ loginEmail }, { organizerName }]
         });
 
         if (existingOrganizer) {
@@ -71,28 +71,42 @@ const getOrganizers = async (req, res) => {
     }
 };
 
-// @desc    Delete/Disable organizer
+// @desc    Delete organizer permanently
 // @route   DELETE /api/admin/organizers/:id
 // @access  Private (Admin)
 const deleteOrganizer = async (req, res) => {
     try {
-        const { archive } = req.query; // ?archive=true to archive instead of delete
-
         const organizer = await Organizer.findById(req.params.id);
 
         if (!organizer) {
             return res.status(404).json({ message: 'Organizer not found' });
         }
 
-        if (archive === 'true') {
-            // Just disable the account (could add an 'active' field to schema)
-            // For now, we'll delete
-            await organizer.deleteOne();
-            res.json({ message: 'Organizer archived' });
-        } else {
-            await organizer.deleteOne();
-            res.json({ message: 'Organizer permanently deleted' });
+        await organizer.deleteOne();
+        res.json({ message: 'Organizer permanently deleted' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Toggle organizer active/archived status
+// @route   PUT /api/admin/organizers/:id/toggle-active
+// @access  Private (Admin)
+const toggleOrganizerStatus = async (req, res) => {
+    try {
+        const organizer = await Organizer.findById(req.params.id);
+
+        if (!organizer) {
+            return res.status(404).json({ message: 'Organizer not found' });
         }
+
+        organizer.active = !organizer.active;
+        await organizer.save();
+        res.json({
+            message: organizer.active ? 'Organizer activated' : 'Organizer archived (disabled)',
+            active: organizer.active
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
@@ -120,7 +134,7 @@ const getPasswordResetRequests = async (req, res) => {
 const processPasswordResetRequest = async (req, res) => {
     try {
         const { status, comment } = req.body; // 'approved' or 'rejected'
-        
+
         const request = await PasswordResetRequest.findById(req.params.id)
             .populate('organizer');
 
@@ -140,7 +154,7 @@ const processPasswordResetRequest = async (req, res) => {
         if (status === 'approved') {
             // Generate new password
             const newPassword = generatePassword();
-            
+
             // Update organizer password
             const organizer = await Organizer.findById(request.organizer._id);
             organizer.password = newPassword;
@@ -194,6 +208,7 @@ module.exports = {
     createOrganizer,
     getOrganizers,
     deleteOrganizer,
+    toggleOrganizerStatus,
     getPasswordResetRequests,
     processPasswordResetRequest,
     getDashboard

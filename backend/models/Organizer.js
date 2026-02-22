@@ -47,6 +47,11 @@ const organizerSchema = new mongoose.Schema
     discordWebhook: {
         type: String,
         default: ''
+    },
+
+    active: {
+        type: Boolean,
+        default: true
     }
 
 },

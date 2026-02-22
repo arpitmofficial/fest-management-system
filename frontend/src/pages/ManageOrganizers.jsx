@@ -163,15 +163,34 @@ const ManageOrganizers = () => {
             </thead>
             <tbody>
               {organizers.map((org) => (
-                <tr key={org._id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px', fontSize: '14px' }}>{org.organizerName}</td>
+                <tr key={org._id} style={{ borderBottom: '1px solid #eee', opacity: org.active === false ? 0.5 : 1 }}>
+                  <td style={{ padding: '12px', fontSize: '14px' }}>
+                    {org.organizerName}
+                    {org.active === false && <span style={{ color: '#c62828', fontSize: '11px', marginLeft: '8px' }}>(Archived)</span>}
+                  </td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>{org.category}</td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>{org.loginEmail}</td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>{org.contactEmail}</td>
                   <td style={{ padding: '12px', fontSize: '14px' }}>
-                    <button onClick={() => handleDelete(org._id, org.organizerName)} style={{ padding: '5px 10px', backgroundColor: '#c62828', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                      Delete
-                    </button>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.put(`/admin/organizers/${org._id}/toggle-active`);
+                            setMessage(org.active === false ? 'Organizer activated' : 'Organizer archived');
+                            fetchOrganizers();
+                          } catch (err) {
+                            setMessage(err.response?.data?.message || 'Action failed');
+                          }
+                        }}
+                        style={{ padding: '5px 10px', backgroundColor: org.active === false ? '#2e7d32' : '#ef6c00', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                      >
+                        {org.active === false ? 'Activate' : 'Archive'}
+                      </button>
+                      <button onClick={() => handleDelete(org._id, org.organizerName)} style={{ padding: '5px 10px', backgroundColor: '#c62828', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

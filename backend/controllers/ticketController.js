@@ -1,6 +1,8 @@
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
+const Participant = require('../models/Participant');
 const QRCode = require('qrcode');
+const { sendTicketEmail } = require('../utils/emailService');
 
 // @desc    Register for event
 // @route   POST /api/tickets/register/:eventId
@@ -11,7 +13,7 @@ const registerForEvent = async (req, res) => {
         console.log('Registration request body:', JSON.stringify(req.body));
         console.log('User:', JSON.stringify(req.user));
         console.log('Event ID:', req.params.eventId);
-        
+
         const event = await Event.findById(req.params.eventId);
         console.log('Event found:', event ? event.eventName : 'NOT FOUND');
 
@@ -60,7 +62,7 @@ const registerForEvent = async (req, res) => {
 
         // Create ticket - handle formData properly
         const registrationData = req.body.formData || req.body || {};
-        
+
         const ticketData = {
             ticketId,
             event: req.params.eventId,
@@ -70,7 +72,7 @@ const registerForEvent = async (req, res) => {
         };
 
         console.log('Creating ticket with data:', JSON.stringify(ticketData));
-        
+
         let ticket;
         try {
             ticket = await Ticket.create(ticketData);
@@ -87,7 +89,7 @@ const registerForEvent = async (req, res) => {
                 eventId: event._id.toString(),
                 participantId: req.user._id.toString()
             });
-            
+
             ticket.qrCode = await QRCode.toDataURL(qrData);
             await ticket.save();
             console.log('QR code generated');
@@ -103,6 +105,24 @@ const registerForEvent = async (req, res) => {
         });
 
         console.log('Ticket created successfully:', ticket.ticketId);
+
+        // Send confirmation email
+        try {
+            const participant = await Participant.findById(req.user._id);
+            if (participant) {
+                await sendTicketEmail(
+                    participant.email,
+                    `${participant.firstName} ${participant.lastName}`,
+                    event,
+                    ticket
+                );
+                ticket.emailSent = true;
+                await ticket.save();
+            }
+        } catch (emailErr) {
+            console.error('Email sending error:', emailErr.message);
+        }
+
         res.status(201).json(ticket);
     } catch (error) {
         console.error('Registration error:', error);
@@ -145,8 +165,8 @@ const purchaseMerchandise = async (req, res) => {
         });
 
         if (existingPurchases + quantity > event.purchaseLimitPerParticipant) {
-            return res.status(400).json({ 
-                message: `Purchase limit is ${event.purchaseLimitPerParticipant} per participant` 
+            return res.status(400).json({
+                message: `Purchase limit is ${event.purchaseLimitPerParticipant} per participant`
             });
         }
 
@@ -163,6 +183,36 @@ const purchaseMerchandise = async (req, res) => {
                 paymentStatus: 'pending'
             }
         });
+
+        // Generate QR code
+        try {
+            const qrData = JSON.stringify({
+                ticketId: ticket.ticketId,
+                eventId: event._id.toString(),
+                participantId: req.user._id.toString()
+            });
+            ticket.qrCode = await QRCode.toDataURL(qrData);
+            await ticket.save();
+        } catch (qrErr) {
+            console.error('QR code error:', qrErr);
+        }
+
+        // Send confirmation email
+        try {
+            const participant = await Participant.findById(req.user._id);
+            if (participant) {
+                await sendTicketEmail(
+                    participant.email,
+                    `${participant.firstName} ${participant.lastName}`,
+                    event,
+                    ticket
+                );
+                ticket.emailSent = true;
+                await ticket.save();
+            }
+        } catch (emailErr) {
+            console.error('Email sending error:', emailErr.message);
+        }
 
         res.status(201).json(ticket);
     } catch (error) {
@@ -207,7 +257,7 @@ const getTicketById = async (req, res) => {
         // Check authorization
         const isParticipant = ticket.participant._id.toString() === req.user._id.toString();
         const isOrganizer = ticket.event.organizer.toString() === req.user._id.toString();
-        
+
         if (!isParticipant && !isOrganizer && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized' });
         }
@@ -272,10 +322,10 @@ const updatePaymentStatus = async (req, res) => {
         }
 
         ticket.merchandiseDetails.paymentStatus = status;
-        
+
         if (status === 'approved') {
             ticket.status = 'confirmed';
-            
+
             // Generate QR code on approval
             const qrData = JSON.stringify({
                 ticketId: ticket.ticketId,
@@ -288,7 +338,7 @@ const updatePaymentStatus = async (req, res) => {
             const event = await Event.findById(ticket.event._id);
             const variantName = ticket.merchandiseDetails.variant;
             // Note: Stock management would need variant ID stored for proper decrement
-            
+
             // Increment registration count
             event.registrationCount += 1;
             await event.save();

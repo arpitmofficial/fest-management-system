@@ -14,7 +14,8 @@ const ManageEvent = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
-  
+  const [participantSearch, setParticipantSearch] = useState('');
+
   // Form editing state
   const [editingForm, setEditingForm] = useState(false);
   const [customFields, setCustomFields] = useState([]);
@@ -146,6 +147,15 @@ const ManageEvent = () => {
     setCustomFields(customFields.filter((_, i) => i !== index));
   };
 
+  const moveCustomField = (index, direction) => {
+    const fields = [...customFields];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= fields.length) return;
+    [fields[index], fields[newIndex]] = [fields[newIndex], fields[index]];
+    fields.forEach((f, i) => f.order = i);
+    setCustomFields(fields);
+  };
+
   const saveFormChanges = async () => {
     try {
       console.log('Saving customFields:', customFields);
@@ -230,7 +240,7 @@ const ManageEvent = () => {
             <button style={tabStyle(activeTab === 'analytics')} onClick={() => setActiveTab('analytics')}>Analytics</button>
             <button style={tabStyle(activeTab === 'form')} onClick={() => setActiveTab('form')}>Form</button>
           </div>
-          <Link 
+          <Link
             to={`/organizer/events/${id}/scan`}
             style={{ padding: '8px 16px', backgroundColor: '#1565c0', color: 'white', textDecoration: 'none', borderRadius: '4px', fontSize: '14px' }}
           >
@@ -268,8 +278,17 @@ const ManageEvent = () => {
         {/* Participants Tab */}
         {activeTab === 'participants' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-              <p style={{ margin: 0 }}>{participants.length} registrations</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <p style={{ margin: 0 }}>{participants.length} registrations</p>
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                  style={{ padding: '8px 12px', border: '1px solid #ddd', borderRadius: '4px', fontSize: '13px', width: '220px' }}
+                />
+              </div>
               <button onClick={exportCSV} style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                 Export CSV
               </button>
@@ -283,49 +302,61 @@ const ManageEvent = () => {
                   <tr style={{ borderBottom: '1px solid #ddd' }}>
                     <th style={{ textAlign: 'left', padding: '10px', fontSize: '14px' }}>Name</th>
                     <th style={{ textAlign: 'left', padding: '10px', fontSize: '14px' }}>Email</th>
+                    <th style={{ textAlign: 'left', padding: '10px', fontSize: '14px' }}>Registered</th>
                     <th style={{ textAlign: 'left', padding: '10px', fontSize: '14px' }}>Status</th>
                     <th style={{ textAlign: 'left', padding: '10px', fontSize: '14px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {participants.map((ticket) => (
-                    <tr key={ticket._id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '10px', fontSize: '14px' }}>
-                        {ticket.participant?.firstName} {ticket.participant?.lastName}
-                      </td>
-                      <td style={{ padding: '10px', fontSize: '14px' }}>{ticket.participant?.email}</td>
-                      <td style={{ padding: '10px', fontSize: '14px' }}>
-                        <span style={{
-                          padding: '3px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          backgroundColor: ticket.status === 'confirmed' ? '#e8f5e9' : 
-                                           ticket.status === 'pending' ? '#fff3e0' :
-                                           ticket.status === 'attended' ? '#e3f2fd' : '#ffebee'
-                        }}>
-                          {ticket.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px', fontSize: '14px' }}>
-                        {event?.eventType === 'merchandise' && ticket.merchandiseDetails?.paymentStatus === 'pending' && (
-                          <>
-                            <button onClick={() => handlePaymentAction(ticket._id, 'approved')} style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                              Approve
+                  {participants
+                    .filter(t => {
+                      if (!participantSearch) return true;
+                      const q = participantSearch.toLowerCase();
+                      const name = `${t.participant?.firstName} ${t.participant?.lastName}`.toLowerCase();
+                      const email = (t.participant?.email || '').toLowerCase();
+                      return name.includes(q) || email.includes(q);
+                    })
+                    .map((ticket) => (
+                      <tr key={ticket._id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '10px', fontSize: '14px' }}>
+                          {ticket.participant?.firstName} {ticket.participant?.lastName}
+                        </td>
+                        <td style={{ padding: '10px', fontSize: '14px' }}>{ticket.participant?.email}</td>
+                        <td style={{ padding: '10px', fontSize: '12px', color: '#888' }}>
+                          {new Date(ticket.createdAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '10px', fontSize: '14px' }}>
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            backgroundColor: ticket.status === 'confirmed' ? '#e8f5e9' :
+                              ticket.status === 'pending' ? '#fff3e0' :
+                                ticket.status === 'attended' ? '#e3f2fd' : '#ffebee'
+                          }}>
+                            {ticket.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px', fontSize: '14px' }}>
+                          {event?.eventType === 'merchandise' && ticket.merchandiseDetails?.paymentStatus === 'pending' && (
+                            <>
+                              <button onClick={() => handlePaymentAction(ticket._id, 'approved')} style={{ marginRight: '5px', padding: '4px 8px', backgroundColor: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                                Approve
+                              </button>
+                              <button onClick={() => handlePaymentAction(ticket._id, 'rejected')} style={{ padding: '4px 8px', backgroundColor: '#c62828', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {ticket.status === 'confirmed' && !ticket.attended && (
+                            <button onClick={() => handleMarkAttendance(ticket._id)} style={{ padding: '4px 8px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                              Mark Present
                             </button>
-                            <button onClick={() => handlePaymentAction(ticket._id, 'rejected')} style={{ padding: '4px 8px', backgroundColor: '#c62828', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        {ticket.status === 'confirmed' && !ticket.attended && (
-                          <button onClick={() => handleMarkAttendance(ticket._id)} style={{ padding: '4px 8px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                            Mark Present
-                          </button>
-                        )}
-                        {ticket.attended && <span style={{ color: '#2e7d32' }}>✓ Attended</span>}
-                      </td>
-                    </tr>
-                  ))}
+                          )}
+                          {ticket.attended && <span style={{ color: '#2e7d32' }}>✓ Attended</span>}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             )}
@@ -384,7 +415,7 @@ const ManageEvent = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '16px' }}>Custom Registration Form Fields</h3>
               {canEditForm && !editingForm && (
-                <button 
+                <button
                   onClick={() => setEditingForm(true)}
                   style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
@@ -409,16 +440,20 @@ const ManageEvent = () => {
                       <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{field.fieldName} {field.required && <span style={{ color: 'red' }}>*</span>}</p>
                       <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
                         Type: {field.fieldType}
-                        {field.options?.length > 0 && ` | Options: ${field.options.join(', ')}`}
+                        {(field.fieldType === 'dropdown' || field.fieldType === 'checkbox' || field.fieldType === 'radio') && field.options?.length > 0 && ` | Options: ${field.options.join(', ')}`}
                       </p>
                     </div>
                     {editingForm && (
-                      <button 
-                        onClick={() => removeCustomField(index)}
-                        style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        Remove
-                      </button>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button onClick={() => moveCustomField(index, -1)} disabled={index === 0} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↑</button>
+                        <button onClick={() => moveCustomField(index, 1)} disabled={index === customFields.length - 1} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↓</button>
+                        <button
+                          onClick={() => removeCustomField(index)}
+                          style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -431,7 +466,7 @@ const ManageEvent = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Field Name</label>
-                    <input 
+                    <input
                       type="text"
                       value={newField.fieldName}
                       onChange={(e) => setNewField({ ...newField, fieldName: e.target.value })}
@@ -441,7 +476,7 @@ const ManageEvent = () => {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Type</label>
-                    <select 
+                    <select
                       value={newField.fieldType}
                       onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
@@ -451,32 +486,34 @@ const ManageEvent = () => {
                       <option value="number">Number</option>
                       <option value="dropdown">Dropdown</option>
                       <option value="checkbox">Checkbox</option>
+                      <option value="radio">Radio</option>
                       <option value="date">Date</option>
+                      <option value="file">File Upload</option>
                     </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>
                       Options (comma sep, for dropdown)
                     </label>
-                    <input 
+                    <input
                       type="text"
                       value={newField.options}
                       onChange={(e) => setNewField({ ...newField, options: e.target.value })}
                       style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                       placeholder="Option1, Option2"
-                      disabled={newField.fieldType !== 'dropdown' && newField.fieldType !== 'checkbox'}
+                      disabled={newField.fieldType !== 'dropdown' && newField.fieldType !== 'checkbox' && newField.fieldType !== 'radio'}
                     />
                   </div>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
-                      <input 
+                      <input
                         type="checkbox"
                         checked={newField.required}
                         onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
                       />
                       Required
                     </label>
-                    <button 
+                    <button
                       onClick={addCustomField}
                       style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                     >
@@ -486,13 +523,13 @@ const ManageEvent = () => {
                 </div>
 
                 <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button 
+                  <button
                     onClick={saveFormChanges}
                     style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
                     Save Changes
                   </button>
-                  <button 
+                  <button
                     onClick={() => { setEditingForm(false); setCustomFields(event?.customFields || []); }}
                     style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >

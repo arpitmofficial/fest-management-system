@@ -84,9 +84,9 @@ const EventDetails = () => {
       <Navbar />
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '30px 20px' }}>
         <div style={{ marginBottom: '30px' }}>
-          <span style={{ 
-            display: 'inline-block', 
-            padding: '4px 10px', 
+          <span style={{
+            display: 'inline-block',
+            padding: '4px 10px',
             backgroundColor: event.eventType === 'merchandise' ? '#e3f2fd' : '#e8f5e9',
             borderRadius: '4px',
             fontSize: '12px',
@@ -201,6 +201,30 @@ const EventDetails = () => {
                           style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                         />
                       )}
+                      {field.fieldType === 'radio' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                          {field.options?.map((opt, i) => (
+                            <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px' }}>
+                              <input
+                                type="radio"
+                                name={field.fieldName}
+                                value={opt}
+                                required={field.required}
+                                onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.value })}
+                              />
+                              {opt}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      {field.fieldType === 'file' && (
+                        <input
+                          type="file"
+                          required={field.required}
+                          onChange={(e) => setFormData({ ...formData, [field.fieldName]: e.target.files[0]?.name || '' })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                        />
+                      )}
                     </div>
                   ))}
                   <button
@@ -265,7 +289,7 @@ const EventDetails = () => {
           <div>
             <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
               <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Event Details</h3>
-              
+
               <div style={{ marginBottom: '15px' }}>
                 <p style={{ margin: '0', fontSize: '13px', color: '#666' }}>Start Date</p>
                 <p style={{ margin: '5px 0 0 0', fontWeight: '500' }}>{new Date(event.eventStartDate).toLocaleDateString()}</p>

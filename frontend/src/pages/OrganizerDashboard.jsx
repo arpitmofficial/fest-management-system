@@ -94,41 +94,80 @@ const OrganizerDashboard = () => {
           </div>
         </div>
 
-        {/* Events List */}
+        {/* Events Carousel */}
         <h2 style={{ fontSize: '18px', marginBottom: '15px' }}>My Events</h2>
         {dashboard?.events?.length === 0 ? (
           <p style={{ color: '#666' }}>No events created yet. <Link to="/organizer/events/create">Create your first event</Link></p>
         ) : (
-          <div>
-            {dashboard?.events?.map((event) => (
-              <div key={event._id} style={eventCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{event.eventName}</h3>
-                    <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#666' }}>
-                      {event.eventType} • {event.registrationCount} registrations
-                    </p>
-                    <p style={{ margin: 0, fontSize: '13px' }}>
-                      {new Date(event.eventStartDate).toLocaleDateString()} - {new Date(event.eventEndDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div style={{ position: 'relative' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: '15px',
+                overflowX: 'auto',
+                paddingBottom: '10px',
+                scrollBehavior: 'smooth',
+                scrollSnapType: 'x mandatory'
+              }}
+              id="events-carousel"
+            >
+              {dashboard?.events?.map((event) => (
+                <div key={event._id} style={{
+                  ...eventCardStyle,
+                  minWidth: '280px',
+                  maxWidth: '300px',
+                  flexShrink: 0,
+                  scrollSnapAlign: 'start'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', flex: 1 }}>{event.eventName}</h3>
                     <span style={{
                       padding: '4px 10px',
                       borderRadius: '4px',
                       fontSize: '12px',
                       backgroundColor: '#f5f5f5',
-                      color: statusColors[event.status] || '#333'
+                      color: statusColors[event.status] || '#333',
+                      marginLeft: '10px',
+                      flexShrink: 0
                     }}>
                       {event.status}
                     </span>
-                    <Link to={`/organizer/events/${event._id}`} style={{ color: '#333', fontSize: '14px' }}>
-                      Manage
-                    </Link>
                   </div>
+                  <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#666' }}>
+                    {event.eventType} • {event.registrationCount} registrations
+                  </p>
+                  <p style={{ margin: '0 0 12px 0', fontSize: '13px' }}>
+                    {new Date(event.eventStartDate).toLocaleDateString()} - {new Date(event.eventEndDate).toLocaleDateString()}
+                  </p>
+                  <Link to={`/organizer/events/${event._id}`} style={{
+                    padding: '6px 14px',
+                    backgroundColor: '#333',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '4px',
+                    fontSize: '13px'
+                  }}>
+                    Manage
+                  </Link>
                 </div>
+              ))}
+            </div>
+            {dashboard?.events?.length > 3 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
+                <button
+                  onClick={() => { document.getElementById('events-carousel').scrollLeft -= 310; }}
+                  style={{ padding: '6px 14px', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#fff' }}
+                >
+                  ← Prev
+                </button>
+                <button
+                  onClick={() => { document.getElementById('events-carousel').scrollLeft += 310; }}
+                  style={{ padding: '6px 14px', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#fff' }}
+                >
+                  Next →
+                </button>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>

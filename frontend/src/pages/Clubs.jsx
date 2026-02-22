@@ -77,7 +77,11 @@ const Clubs = () => {
                 <div key={org._id} style={cardStyle}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>{org.organizerName}</h3>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
+                        <Link to={`/clubs/${org._id}`} style={{ color: '#333', textDecoration: 'none' }}>
+                          {org.organizerName}
+                        </Link>
+                      </h3>
                       <p style={{ margin: '0 0 8px 0', color: '#666', fontSize: '14px' }}>{org.category}</p>
                       <p style={{ margin: '0 0 8px 0', fontSize: '14px' }}>{org.description || 'No description available.'}</p>
                       <p style={{ margin: '0', fontSize: '13px', color: '#888' }}>

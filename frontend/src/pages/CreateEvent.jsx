@@ -66,6 +66,15 @@ const CreateEvent = () => {
     });
   };
 
+  const moveField = (index, direction) => {
+    const fields = [...eventData.customFields];
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= fields.length) return;
+    [fields[index], fields[newIndex]] = [fields[newIndex], fields[index]];
+    fields.forEach((f, i) => f.order = i);
+    setEventData({ ...eventData, customFields: fields });
+  };
+
   const addVariant = () => {
     if (!newVariant.price) return;
     setEventData({
@@ -127,7 +136,7 @@ const CreateEvent = () => {
         {step === 1 && (
           <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '25px' }}>
             <h3 style={{ fontSize: '16px', marginBottom: '20px' }}>Basic Information</h3>
-            
+
             <label style={labelStyle}>
               Event Name *
               <input type="text" name="eventName" value={eventData.eventName} onChange={handleChange} style={inputStyle} required />
@@ -209,12 +218,16 @@ const CreateEvent = () => {
             {eventData.eventType === 'normal' ? (
               <>
                 <h3 style={{ fontSize: '16px', marginBottom: '20px' }}>Custom Registration Form (Optional)</h3>
-                
+
                 {/* Existing Fields */}
                 {eventData.customFields.map((field, index) => (
                   <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid #eee', borderRadius: '4px', marginBottom: '10px' }}>
                     <span>{field.fieldName} ({field.fieldType}) {field.required && '*'}</span>
-                    <button onClick={() => removeField(index)} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer' }}>Remove</button>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                      <button onClick={() => moveField(index, -1)} disabled={index === 0} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}>↑</button>
+                      <button onClick={() => moveField(index, 1)} disabled={index === eventData.customFields.length - 1} style={{ background: 'none', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}>↓</button>
+                      <button onClick={() => removeField(index)} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer' }}>Remove</button>
+                    </div>
                   </div>
                 ))}
 
@@ -230,7 +243,9 @@ const CreateEvent = () => {
                       <option value="email">Email</option>
                       <option value="dropdown">Dropdown</option>
                       <option value="checkbox">Checkbox</option>
+                      <option value="radio">Radio</option>
                       <option value="date">Date</option>
+                      <option value="file">File Upload</option>
                     </select>
                   </div>
                   {(newField.fieldType === 'dropdown' || newField.fieldType === 'checkbox' || newField.fieldType === 'radio') && (
@@ -248,7 +263,7 @@ const CreateEvent = () => {
             ) : (
               <>
                 <h3 style={{ fontSize: '16px', marginBottom: '20px' }}>Merchandise Variants</h3>
-                
+
                 {/* Existing Variants */}
                 {eventData.merchandiseVariants.map((variant, index) => (
                   <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', border: '1px solid #eee', borderRadius: '4px', marginBottom: '10px' }}>

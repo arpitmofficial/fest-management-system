@@ -5,6 +5,7 @@ const {
     createOrganizer,
     getOrganizers,
     deleteOrganizer,
+    toggleOrganizerStatus,
     getPasswordResetRequests,
     processPasswordResetRequest,
     getDashboard
@@ -17,6 +18,7 @@ router.get('/dashboard', getDashboard);
 router.post('/organizers', createOrganizer);
 router.get('/organizers', getOrganizers);
 router.delete('/organizers/:id', deleteOrganizer);
+router.put('/organizers/:id/toggle-active', toggleOrganizerStatus);
 router.get('/password-reset-requests', getPasswordResetRequests);
 router.put('/password-reset-requests/:id', processPasswordResetRequest);
 

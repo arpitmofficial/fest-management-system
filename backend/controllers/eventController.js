@@ -1,6 +1,9 @@
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const Participant = require('../models/Participant');
+const Organizer = require('../models/Organizer');
 const QRCode = require('qrcode');
+const axios = require('axios');
 
 // @desc    Create new event (Organizer only)
 // @route   POST /api/events
@@ -26,12 +29,12 @@ const createEvent = async (req, res) => {
 // @access  Public
 const getEvents = async (req, res) => {
     try {
-        const { 
-            search, 
-            eventType, 
-            eligibility, 
-            startDate, 
-            endDate, 
+        const {
+            search,
+            eventType,
+            eligibility,
+            startDate,
+            endDate,
             organizer,
             status,
             followed,
@@ -40,12 +43,25 @@ const getEvents = async (req, res) => {
 
         let query = { status: { $in: ['published', 'ongoing'] } };
 
-        // Search by name or description
+        // Fuzzy / partial search by name, description, tags, or organizer name
         if (search) {
+            // Escape special regex characters for safety, then allow fuzzy matching
+            const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Build a flexible pattern: allow partial word matches
+            const fuzzyPattern = escaped.split(/\s+/).map(w => `(?=.*${w})`).join('');
+            const regex = new RegExp(fuzzyPattern, 'i');
+
+            // Also search by organizer name
+            const matchingOrganizers = await Organizer.find({
+                organizerName: { $regex: regex }
+            }).select('_id');
+            const orgIds = matchingOrganizers.map(o => o._id);
+
             query.$or = [
-                { eventName: { $regex: search, $options: 'i' } },
-                { eventDescription: { $regex: search, $options: 'i' } },
-                { eventTags: { $regex: search, $options: 'i' } }
+                { eventName: { $regex: regex } },
+                { eventDescription: { $regex: regex } },
+                { eventTags: { $regex: regex } },
+                ...(orgIds.length > 0 ? [{ organizer: { $in: orgIds } }] : [])
             ];
         }
 
@@ -82,10 +98,10 @@ const getEvents = async (req, res) => {
         }
 
         let events;
-        
-        // Trending events (top 5 by registration in last 24 hours)
+
+        // Trending events (top 5 by registration count and views)
         if (trending === 'true') {
-            events = await Event.find({ status: 'published' })
+            events = await Event.find({ status: { $in: ['published', 'ongoing'] } })
                 .sort({ registrationCount: -1, viewCount: -1 })
                 .limit(5)
                 .populate('organizer', 'organizerName category');
@@ -93,6 +109,38 @@ const getEvents = async (req, res) => {
             events = await Event.find(query)
                 .sort({ createdAt: -1 })
                 .populate('organizer', 'organizerName category');
+
+            // Preference-based ordering: boost events matching user interests
+            if (req.user && req.user.role === 'participant') {
+                try {
+                    const participant = await Participant.findById(req.user._id);
+                    if (participant && participant.interests && participant.interests.length > 0) {
+                        const interests = participant.interests.map(i => i.toLowerCase());
+                        const followedIds = (participant.followedOrganizers || []).map(id => id.toString());
+
+                        events = events.map(e => {
+                            let score = 0;
+                            // Boost if event tags match interests
+                            (e.eventTags || []).forEach(tag => {
+                                if (interests.some(interest => tag.toLowerCase().includes(interest) || interest.includes(tag.toLowerCase()))) {
+                                    score += 2;
+                                }
+                            });
+                            // Boost if organizer is followed
+                            if (followedIds.includes(e.organizer?._id?.toString())) {
+                                score += 3;
+                            }
+                            return { ...e.toObject(), _preferenceScore: score };
+                        });
+
+                        // Sort by preference score (higher first) then by date
+                        events.sort((a, b) => b._preferenceScore - a._preferenceScore);
+                    }
+                } catch (prefErr) {
+                    console.error('Preference sorting error:', prefErr);
+                    // Continue with default order
+                }
+            }
         }
 
         res.json(events);
@@ -156,12 +204,12 @@ const updateEvent = async (req, res) => {
         } else if (currentStatus === 'published') {
             // Allow limited updates - customFields only if no registrations yet
             const allowedFields = ['eventDescription', 'registrationDeadline', 'registrationLimit', 'status'];
-            
+
             // Allow customFields update only if form is not locked (no registrations)
             if (!event.formLocked && event.registrationCount === 0) {
                 allowedFields.push('customFields');
             }
-            
+
             Object.keys(updates).forEach(key => {
                 if (!allowedFields.includes(key)) {
                     delete updates[key];
@@ -246,8 +294,31 @@ const publishEvent = async (req, res) => {
         event.status = 'published';
         await event.save();
 
-        // TODO: Send Discord webhook notification if configured
-        
+        // Auto-post to Discord webhook if configured
+        try {
+            const organizer = await Organizer.findById(event.organizer);
+            if (organizer && organizer.discordWebhook) {
+                await axios.post(organizer.discordWebhook, {
+                    embeds: [{
+                        title: `🎉 New Event: ${event.eventName}`,
+                        description: event.eventDescription?.substring(0, 200) || '',
+                        color: 0x5865F2,
+                        fields: [
+                            { name: 'Type', value: event.eventType, inline: true },
+                            { name: 'Date', value: new Date(event.eventStartDate).toLocaleDateString(), inline: true },
+                            { name: 'Fee', value: event.registrationFee ? `₹${event.registrationFee}` : 'Free', inline: true },
+                            { name: 'Eligibility', value: event.eligibility, inline: true }
+                        ],
+                        footer: { text: `Organized by ${organizer.organizerName}` }
+                    }]
+                });
+                console.log('Discord notification sent for event:', event.eventName);
+            }
+        } catch (discordErr) {
+            console.error('Discord notification failed:', discordErr.message);
+            // Don't fail the publish if Discord fails
+        }
+
         res.json(event);
     } catch (error) {
         console.error(error);
