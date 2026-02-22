@@ -26,13 +26,17 @@ const ParticipantDashboard = () => {
   };
 
   const now = new Date();
-  const upcomingTickets = tickets.filter(t => 
-    t.status !== 'cancelled' && t.status !== 'rejected' && new Date(t.event?.eventStartDate) > now
+  const upcomingTickets = tickets.filter(t =>
+    t.status !== 'cancelled' && t.status !== 'rejected' &&
+    t.event?.status !== 'completed' &&
+    new Date(t.event?.eventStartDate) > now
   );
   const normalTickets = tickets.filter(t => t.event?.eventType === 'normal');
   const merchandiseTickets = tickets.filter(t => t.event?.eventType === 'merchandise');
-  const completedTickets = tickets.filter(t => 
-    t.status === 'attended' || new Date(t.event?.eventEndDate) < now
+  const completedTickets = tickets.filter(t =>
+    t.status === 'attended' ||
+    t.event?.status === 'completed' ||
+    new Date(t.event?.eventEndDate) < now
   );
   const cancelledTickets = tickets.filter(t => t.status === 'cancelled' || t.status === 'rejected');
 
@@ -121,14 +125,16 @@ const ParticipantDashboard = () => {
                       padding: '4px 10px',
                       borderRadius: '4px',
                       fontSize: '12px',
-                      backgroundColor: ticket.status === 'confirmed' ? '#e8f5e9' : 
-                                       ticket.status === 'pending' ? '#fff3e0' :
-                                       ticket.status === 'attended' ? '#e3f2fd' : '#ffebee',
+                      backgroundColor: ticket.status === 'confirmed' ? '#e8f5e9' :
+                        ticket.status === 'pending' ? '#fff3e0' :
+                          ticket.status === 'attended' ? '#e3f2fd' : '#ffebee',
                       color: ticket.status === 'confirmed' ? '#2e7d32' :
-                             ticket.status === 'pending' ? '#ef6c00' :
-                             ticket.status === 'attended' ? '#1565c0' : '#c62828'
+                        ticket.status === 'pending' ? '#ef6c00' :
+                          ticket.status === 'attended' ? '#1565c0' : '#c62828'
                     }}>
-                      {ticket.status}
+                      {ticket.status === 'confirmed' && ticket.event?.status === 'completed'
+                        ? 'unattended'
+                        : ticket.status}
                     </span>
                     {ticket.qrCode && (
                       <div style={{ marginTop: '10px' }}>
