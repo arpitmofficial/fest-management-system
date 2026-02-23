@@ -10,7 +10,6 @@ const ManageEvent = () => {
   const [event, setEvent] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [analytics, setAnalytics] = useState(null);
-  const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
@@ -30,7 +29,6 @@ const ManageEvent = () => {
     fetchEvent();
     fetchParticipants();
     fetchAnalytics();
-    fetchFeedbacks();
   }, [id]);
 
   const fetchEvent = async () => {
@@ -60,15 +58,6 @@ const ManageEvent = () => {
       setAnalytics(data);
     } catch (error) {
       console.error('Error fetching analytics:', error);
-    }
-  };
-
-  const fetchFeedbacks = async () => {
-    try {
-      const { data } = await api.get(`/feedback/${id}`);
-      setFeedbacks(data);
-    } catch (error) {
-      console.error('Error fetching feedbacks:', error);
     }
   };
 
@@ -385,27 +374,8 @@ const ManageEvent = () => {
               </div>
               <div style={statCardStyle}>
                 <p style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '600' }}>{analytics.viewCount}</p>
-                <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Views</p>
               </div>
             </div>
-
-            {/* Feedback Section */}
-            {feedbacks.length > 0 && (
-              <div style={{ marginTop: '30px' }}>
-                <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>
-                  Feedback ({feedbacks.length} reviews, Avg: {(feedbacks.reduce((a, f) => a + f.rating, 0) / feedbacks.length).toFixed(1)}★)
-                </h3>
-                {feedbacks.map((fb, i) => (
-                  <div key={i} style={{ border: '1px solid #eee', borderRadius: '4px', padding: '15px', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                      <span style={{ color: '#f9a825' }}>{'★'.repeat(fb.rating)}{'☆'.repeat(5 - fb.rating)}</span>
-                      <span style={{ color: '#888', fontSize: '12px' }}>{new Date(fb.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    {fb.comment && <p style={{ margin: 0, fontSize: '14px' }}>{fb.comment}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 

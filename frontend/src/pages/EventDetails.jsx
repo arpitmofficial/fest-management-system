@@ -4,7 +4,6 @@ import api from '../api';
 import AuthContext from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import EventDiscussion from '../components/EventDiscussion';
-import { downloadICS, openGoogleCalendar } from '../utils/calendar';
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -333,35 +332,6 @@ const EventDetails = () => {
                 <p style={{ marginTop: '15px', padding: '10px', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '13px', color: '#c62828' }}>
                   Registration limit reached
                 </p>
-              )}
-
-              {/* Calendar Export */}
-              <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-                <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#666' }}>Add to Calendar</p>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => openGoogleCalendar(event)}
-                    style={{ flex: 1, padding: '8px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#fff' }}
-                  >
-                    Google
-                  </button>
-                  <button
-                    onClick={() => downloadICS(event)}
-                    style={{ flex: 1, padding: '8px', fontSize: '12px', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', backgroundColor: '#fff' }}
-                  >
-                    .ics File
-                  </button>
-                </div>
-              </div>
-
-              {/* Feedback Link */}
-              {event.status === 'completed' && (
-                <Link
-                  to={`/events/${id}/feedback`}
-                  style={{ display: 'block', marginTop: '15px', padding: '10px', textAlign: 'center', backgroundColor: '#f5f5f5', borderRadius: '4px', color: '#333', textDecoration: 'none', fontSize: '14px' }}
-                >
-                  Leave Feedback
-                </Link>
               )}
             </div>
           </div>
