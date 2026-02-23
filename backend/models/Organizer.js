@@ -2,67 +2,65 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const organizerSchema = new mongoose.Schema
-({
-    loginEmail: {
-        type: String,
-        required: [true, 'Please add a login email'],
-        unique: true,
-        lowercase: true,
-        trim: true,
-        immutable: true
-    },
-    password: {
-        type: String,
-        required: [true, 'Please add a password'],
-        select: false
-    },
+    ({
+        loginEmail: {
+            type: String,
+            required: [true, 'Please add a login email'],
+            unique: true,
+            lowercase: true,
+            trim: true,
+            immutable: true
+        },
+        password: {
+            type: String,
+            required: [true, 'Please add a password'],
+            select: false
+        },
 
-    organizerName: {
-        type: String,
-        required: [true, 'Please add an organizer name'],
-        unique: true,
-        trim: true
-    },
-    category: {
-        type: String, // e.g., "Cultural", "Technical", "Sports", "Fest Team"
-        required: [true, 'Please add a category']
-    },
-    collegeName: {
-        type: String,
-        required: [true, 'Please add college/organization name']
-    },
-    description: {
-        type: String,
-    },
-    
-    contactEmail: {
-        type: String,
-        required: [true, 'Please add a public contact email']
-    },
-    contactNumber: {
-        type: String,
-        default: ''
-    },
+        organizerName: {
+            type: String,
+            required: [true, 'Please add an organizer name'],
+            unique: true,
+            trim: true
+        },
+        category: {
+            type: String, // e.g., "Cultural", "Technical", "Sports", "Fest Team"
+            required: [true, 'Please add a category']
+        },
+        collegeName: {
+            type: String,
+            default: ''
+        },
+        description: {
+            type: String,
+        },
 
-    discordWebhook: {
-        type: String,
-        default: ''
+        contactEmail: {
+            type: String,
+            required: [true, 'Please add a public contact email']
+        },
+        contactNumber: {
+            type: String,
+            default: ''
+        },
+
+        discordWebhook: {
+            type: String,
+            default: ''
+        },
+
+        active: {
+            type: Boolean,
+            default: true
+        }
+
     },
+        {
+            timestamps: true
+        });
 
-    active: {
-        type: Boolean,
-        default: true
-    }
-
-},
-{
-    timestamps: true
-});
-
-organizerSchema.pre('save', async function()
-{
-    if(!this.isModified('password'))
-    {
+organizerSchema.pre('save', async function () {
+    if (!this.isModified('password')) {
         return;
     }
 
@@ -70,8 +68,7 @@ organizerSchema.pre('save', async function()
     this.password = await bcrypt.hash(this.password, salt);
 });
 
-organizerSchema.methods.matchPassword = async function(enteredPassword)
-{
+organizerSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
 

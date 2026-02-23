@@ -10,7 +10,8 @@ const {
     getMyEvents,
     publishEvent,
     getEventParticipants,
-    getEventAnalytics
+    getEventAnalytics,
+    exportParticipantsCSV
 } = require('../controllers/eventController');
 
 // Public routes
@@ -24,6 +25,7 @@ router.put('/:id', protect, authorize('organizer'), updateEvent);
 router.delete('/:id', protect, authorize('organizer'), deleteEvent);
 router.put('/:id/publish', protect, authorize('organizer'), publishEvent);
 router.get('/:id/participants', protect, authorize('organizer'), getEventParticipants);
+router.get('/:id/participants/export', protect, authorize('organizer'), exportParticipantsCSV);
 router.get('/:id/analytics', protect, authorize('organizer'), getEventAnalytics);
 
 module.exports = router;

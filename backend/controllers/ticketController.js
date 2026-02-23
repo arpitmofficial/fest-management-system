@@ -170,12 +170,13 @@ const purchaseMerchandise = async (req, res) => {
             });
         }
 
-        // Create ticket with pending payment
+        // Create ticket with pending payment — NO QR code until approved
         const ticket = await Ticket.create({
             event: req.params.eventId,
             participant: req.user._id,
             status: 'pending',
             merchandiseDetails: {
+                variantId: variantId,
                 variant: `${variant.size || ''} ${variant.color || ''}`.trim(),
                 quantity,
                 totalAmount: variant.price * quantity,
@@ -184,35 +185,7 @@ const purchaseMerchandise = async (req, res) => {
             }
         });
 
-        // Generate QR code
-        try {
-            const qrData = JSON.stringify({
-                ticketId: ticket.ticketId,
-                eventId: event._id.toString(),
-                participantId: req.user._id.toString()
-            });
-            ticket.qrCode = await QRCode.toDataURL(qrData);
-            await ticket.save();
-        } catch (qrErr) {
-            console.error('QR code error:', qrErr);
-        }
-
-        // Send confirmation email
-        try {
-            const participant = await Participant.findById(req.user._id);
-            if (participant) {
-                await sendTicketEmail(
-                    participant.email,
-                    `${participant.firstName} ${participant.lastName}`,
-                    event,
-                    ticket
-                );
-                ticket.emailSent = true;
-                await ticket.save();
-            }
-        } catch (emailErr) {
-            console.error('Email sending error:', emailErr.message);
-        }
+        // No QR code generated here — only on payment approval (per spec)
 
         res.status(201).json(ticket);
     } catch (error) {
@@ -326,7 +299,7 @@ const updatePaymentStatus = async (req, res) => {
         if (status === 'approved') {
             ticket.status = 'confirmed';
 
-            // Generate QR code on approval
+            // Generate QR code on approval (spec: no QR while pending/rejected)
             const qrData = JSON.stringify({
                 ticketId: ticket.ticketId,
                 eventId: ticket.event._id,
@@ -334,14 +307,34 @@ const updatePaymentStatus = async (req, res) => {
             });
             ticket.qrCode = await QRCode.toDataURL(qrData);
 
-            // Decrement stock
+            // Decrement stock using stored variantId
             const event = await Event.findById(ticket.event._id);
-            const variantName = ticket.merchandiseDetails.variant;
-            // Note: Stock management would need variant ID stored for proper decrement
+            if (ticket.merchandiseDetails.variantId) {
+                const variant = event.merchandiseVariants.id(ticket.merchandiseDetails.variantId);
+                if (variant) {
+                    variant.stock = Math.max(0, variant.stock - (ticket.merchandiseDetails.quantity || 1));
+                }
+            }
 
             // Increment registration count
             event.registrationCount += 1;
             await event.save();
+
+            // Send confirmation email with QR on approval
+            try {
+                const participant = await Participant.findById(ticket.participant);
+                if (participant) {
+                    await sendTicketEmail(
+                        participant.email,
+                        `${participant.firstName} ${participant.lastName}`,
+                        event,
+                        ticket
+                    );
+                    ticket.emailSent = true;
+                }
+            } catch (emailErr) {
+                console.error('Email sending error:', emailErr.message);
+            }
         } else {
             ticket.status = 'rejected';
         }
@@ -423,6 +416,140 @@ const verifyTicket = async (req, res) => {
     }
 };
 
+// @desc    Get live attendance stats (scanned vs not-yet-scanned)
+// @route   GET /api/tickets/attendance/:eventId
+// @access  Private (Organizer)
+const getAttendanceStats = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.eventId);
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        if (event.organizer.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const tickets = await Ticket.find({
+            event: req.params.eventId,
+            status: { $in: ['confirmed', 'attended'] }
+        }).populate('participant', 'firstName lastName email');
+
+        const scanned = tickets.filter(t => t.attended);
+        const notScanned = tickets.filter(t => !t.attended);
+
+        res.json({
+            total: tickets.length,
+            scannedCount: scanned.length,
+            notScannedCount: notScanned.length,
+            percentage: tickets.length > 0 ? Math.round((scanned.length / tickets.length) * 100) : 0,
+            scanned: scanned.map(t => ({
+                name: `${t.participant?.firstName || ''} ${t.participant?.lastName || ''}`.trim(),
+                email: t.participant?.email,
+                ticketId: t.ticketId,
+                attendedAt: t.attendedAt
+            })),
+            notScanned: notScanned.map(t => ({
+                name: `${t.participant?.firstName || ''} ${t.participant?.lastName || ''}`.trim(),
+                email: t.participant?.email,
+                ticketId: t.ticketId,
+                ticketObjectId: t._id
+            }))
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Export attendance report as CSV
+// @route   GET /api/tickets/attendance/:eventId/export
+// @access  Private (Organizer)
+const exportAttendanceCSV = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.eventId);
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        if (event.organizer.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const tickets = await Ticket.find({
+            event: req.params.eventId,
+            status: { $in: ['confirmed', 'attended'] }
+        }).populate('participant', 'firstName lastName email contactNumber').sort({ createdAt: -1 });
+
+        const header = 'Name,Email,Contact,Ticket ID,Status,Attended,Attended At\n';
+        const rows = tickets.map(t => {
+            const name = `${t.participant?.firstName || ''} ${t.participant?.lastName || ''}`.trim();
+            const attendedAt = t.attendedAt ? new Date(t.attendedAt).toISOString() : '';
+            return `"${name}","${t.participant?.email || ''}","${t.participant?.contactNumber || ''}",${t.ticketId},${t.status},${t.attended ? 'Yes' : 'No'},${attendedAt}`;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=attendance_${event.eventName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+        res.send(header + rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Manual override attendance (with audit reason)
+// @route   PUT /api/tickets/:id/manual-attend
+// @access  Private (Organizer)
+const manualOverrideAttendance = async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const ticket = await Ticket.findById(req.params.id).populate('event');
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket not found' });
+        }
+
+        if (ticket.event.organizer.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        if (!reason || reason.trim().length === 0) {
+            return res.status(400).json({ message: 'Reason is required for manual override' });
+        }
+
+        // Log the manual override for audit
+        const overrideLog = {
+            action: ticket.attended ? 'UNMARK_ATTENDANCE' : 'MARK_ATTENDANCE',
+            reason: reason.trim(),
+            performedBy: req.user._id,
+            performedAt: new Date(),
+            previousStatus: ticket.attended ? 'attended' : ticket.status
+        };
+
+        // Toggle attendance
+        if (ticket.attended) {
+            ticket.attended = false;
+            ticket.attendedAt = null;
+            ticket.status = 'confirmed';
+        } else {
+            ticket.attended = true;
+            ticket.attendedAt = new Date();
+            ticket.status = 'attended';
+        }
+
+        // Store audit log in ticket
+        if (!ticket.auditLog) ticket.auditLog = [];
+        ticket.auditLog.push(overrideLog);
+
+        await ticket.save();
+
+        console.log(`[AUDIT] Manual attendance override: ${overrideLog.action} for ticket ${ticket.ticketId} by organizer ${req.user._id}. Reason: ${reason}`);
+
+        res.json({ ticket, override: overrideLog });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
     registerForEvent,
     purchaseMerchandise,
@@ -431,5 +558,8 @@ module.exports = {
     cancelRegistration,
     updatePaymentStatus,
     markAttendance,
-    verifyTicket
+    verifyTicket,
+    getAttendanceStats,
+    exportAttendanceCSV,
+    manualOverrideAttendance
 };

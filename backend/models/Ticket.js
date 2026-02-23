@@ -28,6 +28,7 @@ const ticketSchema = new mongoose.Schema({
 
     // For merchandise
     merchandiseDetails: {
+        variantId: String, // Store variant ID for stock decrement
         variant: String,
         quantity: { type: Number, default: 1 },
         totalAmount: Number,
@@ -47,7 +48,7 @@ const ticketSchema = new mongoose.Schema({
 
     // QR Code data
     qrCode: String,
-    
+
     // Attendance
     attended: {
         type: Boolean,
@@ -59,13 +60,22 @@ const ticketSchema = new mongoose.Schema({
     emailSent: {
         type: Boolean,
         default: false
-    }
+    },
+
+    // Audit log for manual overrides
+    auditLog: [{
+        action: String,
+        reason: String,
+        performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Organizer' },
+        performedAt: Date,
+        previousStatus: String
+    }]
 }, {
     timestamps: true
 });
 
 // Generate unique ticket ID before saving
-ticketSchema.pre('save', async function() {
+ticketSchema.pre('save', async function () {
     if (!this.ticketId) {
         const prefix = 'TKT';
         const timestamp = Date.now().toString(36).toUpperCase();

@@ -390,6 +390,42 @@ const getEventAnalytics = async (req, res) => {
     }
 };
 
+// @desc    Export event participants as CSV
+// @route   GET /api/events/:id/participants/export
+// @access  Private (Organizer - owner only)
+const exportParticipantsCSV = async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        if (event.organizer.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Not authorized' });
+        }
+
+        const tickets = await Ticket.find({ event: req.params.id })
+            .populate('participant', 'firstName lastName email contactNumber collegeName')
+            .sort({ createdAt: -1 });
+
+        const header = 'Name,Email,Contact,College,Registration Date,Status,Payment Status,Amount\n';
+        const rows = tickets.map(t => {
+            const p = t.participant || {};
+            const name = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+            const regDate = new Date(t.createdAt).toISOString().split('T')[0];
+            const payStatus = t.merchandiseDetails?.paymentStatus || 'N/A';
+            const amount = t.merchandiseDetails?.totalAmount || t.amount || 0;
+            return `"${name}","${p.email || ''}","${p.contactNumber || ''}","${p.collegeName || ''}",${regDate},${t.status},${payStatus},${amount}`;
+        }).join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=participants_${event.eventName.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+        res.send(header + rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
     createEvent,
     getEvents,
@@ -399,5 +435,6 @@ module.exports = {
     getMyEvents,
     publishEvent,
     getEventParticipants,
-    getEventAnalytics
+    getEventAnalytics,
+    exportParticipantsCSV
 };

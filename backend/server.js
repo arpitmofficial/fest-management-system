@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -10,7 +10,7 @@ const ticketRoutes = require('./routes/ticketRoutes');
 const participantRoutes = require('./routes/participantRoutes');
 const organizerRoutes = require('./routes/organizerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const feedbackRoutes = require('./routes/feedbackRoutes');
+const discussionRoutes = require('./routes/discussionRoutes');
 
 connectDB();
 
@@ -27,7 +27,7 @@ app.use('/api/tickets', ticketRoutes);
 app.use('/api/participants', participantRoutes);
 app.use('/api/organizers', organizerRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/feedback', feedbackRoutes);
+app.use('/api/discussions', discussionRoutes);
 
 // Test Route
 app.get('/', (req, res) => {

@@ -9,7 +9,10 @@ const {
     cancelRegistration,
     updatePaymentStatus,
     markAttendance,
-    verifyTicket
+    verifyTicket,
+    getAttendanceStats,
+    exportAttendanceCSV,
+    manualOverrideAttendance
 } = require('../controllers/ticketController');
 
 // Participant routes
@@ -22,6 +25,9 @@ router.delete('/:id', protect, authorize('participant'), cancelRegistration);
 // Organizer routes
 router.put('/:id/payment', protect, authorize('organizer'), updatePaymentStatus);
 router.put('/:id/attend', protect, authorize('organizer'), markAttendance);
+router.put('/:id/manual-attend', protect, authorize('organizer'), manualOverrideAttendance);
 router.post('/verify', protect, authorize('organizer'), verifyTicket);
+router.get('/attendance/:eventId', protect, authorize('organizer'), getAttendanceStats);
+router.get('/attendance/:eventId/export', protect, authorize('organizer'), exportAttendanceCSV);
 
 module.exports = router;

@@ -1,5 +1,7 @@
 const Organizer = require('../models/Organizer');
 const Event = require('../models/Event');
+const Participant = require('../models/Participant');
+const Ticket = require('../models/Ticket');
 const PasswordResetRequest = require('../models/PasswordResetRequest');
 const axios = require('axios');
 
@@ -23,7 +25,7 @@ const updateProfile = async (req, res) => {
     try {
         console.log('Update profile request:', req.body);
         console.log('User ID:', req.user._id);
-        
+
         const { organizerName, category, description, contactEmail, contactNumber, discordWebhook } = req.body;
 
         // Build update object - only include fields that are provided
@@ -66,14 +68,33 @@ const getDashboard = async (req, res) => {
     try {
         const events = await Event.find({ organizer: req.user._id });
 
+        // Get all event IDs for ticket queries
+        const eventIds = events.map(e => e._id);
+        const completedEventIds = events.filter(e => e.status === 'completed').map(e => e._id);
+
+        // Query tickets for analytics
+        const allTickets = eventIds.length > 0
+            ? await Ticket.find({ event: { $in: eventIds } })
+            : [];
+
+        const completedTickets = completedEventIds.length > 0
+            ? allTickets.filter(t => completedEventIds.some(id => id.toString() === t.event.toString()))
+            : [];
+
         const stats = {
             totalEvents: events.length,
             draftEvents: events.filter(e => e.status === 'draft').length,
             publishedEvents: events.filter(e => e.status === 'published').length,
             ongoingEvents: events.filter(e => e.status === 'ongoing').length,
-            completedEvents: events.filter(e => e.status === 'completed').length,
+            completedEvents: completedEventIds.length,
             totalRegistrations: events.reduce((sum, e) => sum + e.registrationCount, 0),
-            totalViews: events.reduce((sum, e) => sum + e.viewCount, 0)
+            totalViews: events.reduce((sum, e) => sum + e.viewCount, 0),
+            // Analytics for completed events
+            totalRevenue: completedTickets
+                .filter(t => t.status !== 'cancelled' && t.status !== 'rejected')
+                .reduce((sum, t) => sum + (t.amount || 0), 0),
+            totalAttendance: completedTickets.filter(t => t.status === 'attended').length,
+            totalSales: completedTickets.filter(t => t.ticketType === 'merchandise' && t.status !== 'cancelled').length
         };
 
         res.json({ stats, events });

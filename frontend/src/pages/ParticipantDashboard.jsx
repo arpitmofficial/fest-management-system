@@ -108,16 +108,25 @@ const ParticipantDashboard = () => {
               <div key={ticket._id} style={cardStyle}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{ticket.event?.eventName}</h3>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>
+                      <Link to={`/events/${ticket.event?._id}`} style={{ color: '#333', textDecoration: 'none' }}>
+                        {ticket.event?.eventName}
+                      </Link>
+                    </h3>
                     <p style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#666' }}>
                       {ticket.event?.organizer?.organizerName} • {ticket.event?.eventType}
                     </p>
                     <p style={{ margin: '0 0 5px 0', fontSize: '13px' }}>
                       {new Date(ticket.event?.eventStartDate).toLocaleDateString()}
                     </p>
-                    <p style={{ margin: '0', fontSize: '12px', color: '#888' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#888' }}>
                       Ticket ID: {ticket.ticketId}
                     </p>
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                      <Link to={`/events/${ticket.event?._id}`} style={{ fontSize: '13px', color: '#333' }}>
+                        View Event →
+                      </Link>
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{

@@ -92,6 +92,18 @@ const OrganizerDashboard = () => {
             <p style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '600' }}>{dashboard?.stats?.totalViews || 0}</p>
             <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Views</p>
           </div>
+          <div style={statCardStyle}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '600' }}>₹{dashboard?.stats?.totalRevenue || 0}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Revenue</p>
+          </div>
+          <div style={statCardStyle}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '600' }}>{dashboard?.stats?.totalAttendance || 0}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Attendance</p>
+          </div>
+          <div style={statCardStyle}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '600' }}>{dashboard?.stats?.totalSales || 0}</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>Merch Sales</p>
+          </div>
         </div>
 
         {/* Events Carousel */}

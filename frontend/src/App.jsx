@@ -23,7 +23,6 @@ import CreateEvent from './pages/CreateEvent';
 import ManageEvent from './pages/ManageEvent';
 import OrganizerProfile from './pages/OrganizerProfile';
 import QRScanner from './pages/QRScanner';
-import EventFeedback from './pages/EventFeedback';
 import OngoingEvents from './pages/OngoingEvents';
 
 // Admin Pages
@@ -71,11 +70,6 @@ function AppRoutes() {
       <Route path="/events/:id" element={
         <ProtectedRoute allowedRoles={['participant']}>
           <EventDetails />
-        </ProtectedRoute>
-      } />
-      <Route path="/events/:id/feedback" element={
-        <ProtectedRoute allowedRoles={['participant']}>
-          <EventFeedback />
         </ProtectedRoute>
       } />
       <Route path="/profile" element={

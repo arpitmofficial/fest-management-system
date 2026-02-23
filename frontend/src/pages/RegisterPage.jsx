@@ -1,4 +1,5 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import AuthContext from '../context/AuthContext';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,14 +11,16 @@ const RegisterPage = () => {
     email: '',
     password: '',
     contactNumber: '',
-    participantType: 'IIIT', // Default to IIIT
+    participantType: 'IIIT',
     collegeName: '',
-    interests: '' // Comma separated string for now
+    interests: ''
   });
 
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,25 +29,29 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      // 1. Convert "Interests" string to Array (e.g., "Coding, Music" -> ["Coding", "Music"])
+      // Execute reCAPTCHA v3 and get token
+      let captchaToken = '';
+      if (executeRecaptcha) {
+        captchaToken = await executeRecaptcha('register');
+      }
+
       const payload = {
         ...formData,
-        interests: formData.interests.split(',').map(i => i.trim())
+        interests: formData.interests.split(',').map(i => i.trim()),
+        captchaToken
       };
 
-      // 2. Send to Backend
       const { data } = await api.post('/auth/register', payload);
-
-      // 3. Auto-Login the user
       login(data, data.token);
-
-      // 4. Redirect to Dashboard
       navigate('/onboarding');
 
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,13 +62,11 @@ const RegisterPage = () => {
       {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
 
       <form onSubmit={handleSubmit}>
-        {/* Name Fields */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
           <input name="firstName" placeholder="First Name" onChange={handleChange} required style={{ flex: 1, padding: '8px' }} />
           <input name="lastName" placeholder="Last Name" onChange={handleChange} required style={{ flex: 1, padding: '8px' }} />
         </div>
 
-        {/* Contact Fields */}
         <div style={{ marginBottom: '15px' }}>
           <input name="email" type="email" placeholder="Email Address" onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
         </div>
@@ -69,12 +74,10 @@ const RegisterPage = () => {
           <input name="contactNumber" placeholder="Phone Number" onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
         </div>
 
-        {/* Password */}
         <div style={{ marginBottom: '15px' }}>
           <input name="password" type="password" placeholder="Password" onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
         </div>
 
-        {/* Participant Type Dropdown */}
         <div style={{ marginBottom: '15px' }}>
           <label>I am from:</label>
           <select name="participantType" value={formData.participantType} onChange={handleChange} style={{ width: '100%', padding: '8px', marginTop: '5px' }}>
@@ -83,21 +86,29 @@ const RegisterPage = () => {
           </select>
         </div>
 
-        {/* CONDITIONAL: College Name (Only shows if Non-IIIT) */}
         {formData.participantType === 'Non-IIIT' && (
           <div style={{ marginBottom: '15px' }}>
             <input name="collegeName" placeholder="Enter your College Name" onChange={handleChange} required style={{ width: '100%', padding: '8px' }} />
           </div>
         )}
 
-        {/* Interests */}
         <div style={{ marginBottom: '15px' }}>
           <input name="interests" placeholder="Interests (e.g. Coding, Dance, Art)" onChange={handleChange} style={{ width: '100%', padding: '8px' }} />
         </div>
 
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}>
-          Register
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ width: '100%', padding: '10px', backgroundColor: loading ? '#999' : '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px' }}
+        >
+          {loading ? 'Verifying...' : 'Register'}
         </button>
+
+        <p style={{ fontSize: '11px', color: '#999', marginTop: '10px', textAlign: 'center' }}>
+          This site is protected by reCAPTCHA and the Google{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>Privacy Policy</a> and{' '}
+          <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>Terms of Service</a> apply.
+        </p>
       </form>
 
       <p style={{ marginTop: '15px', textAlign: 'center' }}>

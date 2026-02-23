@@ -1,34 +1,40 @@
-import { useNavigate, Link } from 'react-router-dom'; // Tool to change pages
-import { useState, useContext } from 'react';
-import AuthContext from '../context/AuthContext'; // Get the "Global State"
-import api from '../api'; // Get the "Bridge"
+import { useNavigate, Link } from 'react-router-dom';
+import { useState, useContext, useCallback } from 'react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import AuthContext from '../context/AuthContext';
+import api from '../api';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('participant'); // Default role
+  const [role, setRole] = useState('participant');
   const [error, setError] = useState('');
-  
-  const { login } = useContext(AuthContext); // Get the login function from Context
+  const [loading, setLoading] = useState(false);
+
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Stop page from reloading
+    e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      // 1. Send data to Backend
-      const { data } = await api.post('/auth/login', { email, password, role });
-      
-      // 2. If success, update Global State
+      // Execute reCAPTCHA v3 and get token
+      let captchaToken = '';
+      if (executeRecaptcha) {
+        captchaToken = await executeRecaptcha('login');
+      }
+
+      const { data } = await api.post('/auth/login', { email, password, role, captchaToken });
       login(data, data.token);
-      
-      // 3. Redirect to Dashboard
-      navigate('/dashboard'); 
-      
+      navigate('/dashboard');
+
     } catch (err) {
-      // 4. If error, show message
       setError(err.response?.data?.message || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,34 +42,34 @@ const LoginPage = () => {
     <div style={{ maxWidth: '350px', margin: '80px auto', padding: '20px' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '25px' }}>Login</h2>
       {error && <p style={{ color: 'red', fontSize: '14px' }}>{error}</p>}
-      
+
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '15px' }}>
           <label>Email:</label>
-          <input 
-            type="email" 
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            required 
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
             style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
 
         <div style={{ marginBottom: '15px' }}>
           <label>Password:</label>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            required 
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
             style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
 
         <div style={{ marginBottom: '15px' }}>
           <label>I am a:</label>
-          <select 
-            value={role} 
+          <select
+            value={role}
             onChange={(e) => setRole(e.target.value)}
             style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           >
@@ -73,9 +79,19 @@ const LoginPage = () => {
           </select>
         </div>
 
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px' }}>
-          Login
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ width: '100%', padding: '10px', backgroundColor: loading ? '#999' : '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer', fontSize: '14px' }}
+        >
+          {loading ? 'Verifying...' : 'Login'}
         </button>
+
+        <p style={{ fontSize: '11px', color: '#999', marginTop: '10px', textAlign: 'center' }}>
+          This site is protected by reCAPTCHA and the Google{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>Privacy Policy</a> and{' '}
+          <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#999' }}>Terms of Service</a> apply.
+        </p>
       </form>
       <p style={{ marginTop: '15px', textAlign: 'center' }}>
         New here? <Link to="/register">Create an account</Link>

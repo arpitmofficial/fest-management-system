@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import AuthContext from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import EventDiscussion from '../components/EventDiscussion';
 import { downloadICS, openGoogleCalendar } from '../utils/calendar';
 
 const EventDetails = () => {
@@ -365,6 +366,9 @@ const EventDetails = () => {
             </div>
           </div>
         </div>
+
+        {/* Discussion Forum */}
+        <EventDiscussion eventId={id} />
       </div>
     </div>
   );
