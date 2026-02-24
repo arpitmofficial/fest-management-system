@@ -315,6 +315,13 @@ const EventDetails = () => {
                 <p style={{ margin: '5px 0 0 0', fontWeight: '500' }}>{event.eligibility === 'all' ? 'Open to All' : event.eligibility}</p>
               </div>
 
+              {event.eventType === 'merchandise' && event.upiId && (
+                <div style={{ marginBottom: '15px' }}>
+                  <p style={{ margin: '0', fontSize: '13px', color: '#666' }}>UPI ID for Payment</p>
+                  <p style={{ margin: '5px 0 0 0', fontWeight: '500', color: '#1565c0' }}>{event.upiId}</p>
+                </div>
+              )}
+
               <div>
                 <p style={{ margin: '0', fontSize: '13px', color: '#666' }}>Registrations</p>
                 <p style={{ margin: '5px 0 0 0', fontWeight: '500' }}>

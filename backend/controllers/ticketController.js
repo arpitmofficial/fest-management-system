@@ -170,8 +170,15 @@ const purchaseMerchandise = async (req, res) => {
             });
         }
 
+        // Generate ticket ID
+        const prefix = 'TKT';
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const ticketId = `${prefix}-${timestamp}-${random}`;
+
         // Create ticket with pending payment — NO QR code until approved
         const ticket = await Ticket.create({
+            ticketId,
             event: req.params.eventId,
             participant: req.user._id,
             status: 'pending',

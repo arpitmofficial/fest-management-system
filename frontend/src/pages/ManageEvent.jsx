@@ -25,6 +25,14 @@ const ManageEvent = () => {
     options: ''
   });
 
+  const [merchandiseVariants, setMerchandiseVariants] = useState([]);
+  const [newVariant, setNewVariant] = useState({
+    size: '',
+    color: '',
+    stock: 0,
+    price: 0
+  });
+
   useEffect(() => {
     fetchEvent();
     fetchParticipants();
@@ -36,6 +44,7 @@ const ManageEvent = () => {
       const { data } = await api.get(`/events/${id}`);
       setEvent(data);
       setCustomFields(data.customFields || []);
+      setMerchandiseVariants(data.merchandiseVariants || []);
     } catch (error) {
       console.error('Error fetching event:', error);
     } finally {
@@ -147,8 +156,13 @@ const ManageEvent = () => {
 
   const saveFormChanges = async () => {
     try {
-      console.log('Saving customFields:', customFields);
-      await api.put(`/events/${id}`, { customFields });
+      if (event?.eventType === 'merchandise') {
+        console.log('Saving merchandiseVariants:', merchandiseVariants);
+        await api.put(`/events/${id}`, { merchandiseVariants });
+      } else {
+        console.log('Saving customFields:', customFields);
+        await api.put(`/events/${id}`, { customFields });
+      }
       setMessage('Form updated successfully');
       setEditingForm(false);
       fetchEvent();
@@ -156,6 +170,16 @@ const ManageEvent = () => {
       console.error('Save form error:', error.response?.data);
       setMessage(error.response?.data?.error || error.response?.data?.message || 'Failed to update form');
     }
+  };
+
+  const addVariant = () => {
+    if (!newVariant.price) return;
+    setMerchandiseVariants([...merchandiseVariants, newVariant]);
+    setNewVariant({ size: '', color: '', stock: 0, price: 0 });
+  };
+
+  const removeVariant = (index) => {
+    setMerchandiseVariants(merchandiseVariants.filter((_, i) => i !== index));
   };
 
   const canEditForm = !event?.formLocked && event?.registrationCount === 0;
@@ -250,6 +274,9 @@ const ManageEvent = () => {
                 <p><strong>Deadline:</strong> {new Date(event?.registrationDeadline).toLocaleString()}</p>
                 <p><strong>Fee:</strong> {event?.registrationFee > 0 ? `₹${event?.registrationFee}` : 'Free'}</p>
                 <p><strong>Limit:</strong> {event?.registrationLimit || 'Unlimited'}</p>
+                {event?.eventType === 'merchandise' && (
+                  <p><strong>UPI ID:</strong> {event?.upiId || 'Not provided'}</p>
+                )}
               </div>
               <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
                 <h3 style={{ fontSize: '16px', marginBottom: '15px' }}>Description</h3>
@@ -383,129 +410,197 @@ const ManageEvent = () => {
         {activeTab === 'form' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>Custom Registration Form Fields</h3>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>
+                {event?.eventType === 'merchandise' ? 'Merchandise Variants' : 'Custom Registration Form Fields'}
+              </h3>
               {canEditForm && !editingForm && (
                 <button
                   onClick={() => setEditingForm(true)}
                   style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                 >
-                  Edit Form
+                  Edit {event?.eventType === 'merchandise' ? 'Variants' : 'Form'}
                 </button>
               )}
             </div>
 
             {!canEditForm && (
               <p style={{ color: '#666', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>
-                Form editing is locked because {event?.formLocked ? 'the form has been locked manually' : 'there are registrations for this event'}.
+                {event?.eventType === 'merchandise'
+                  ? 'Variant editing is locked because there are purchases for this merchandise.'
+                  : `Form editing is locked because ${event?.formLocked ? 'the form has been locked manually' : 'there are registrations for this event'}.`}
               </p>
             )}
 
-            {customFields.length === 0 && !editingForm ? (
-              <p style={{ color: '#666' }}>No custom fields defined. Participants will only fill basic registration info.</p>
-            ) : (
-              <div>
-                {customFields.map((field, index) => (
-                  <div key={index} style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '15px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{field.fieldName} {field.required && <span style={{ color: 'red' }}>*</span>}</p>
-                      <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
-                        Type: {field.fieldType}
-                        {(field.fieldType === 'dropdown' || field.fieldType === 'checkbox' || field.fieldType === 'radio') && field.options?.length > 0 && ` | Options: ${field.options.join(', ')}`}
-                      </p>
+            {event?.eventType === 'merchandise' ? (
+              // Merchandise UI
+              <>
+                {merchandiseVariants.length === 0 && !editingForm ? (
+                  <p style={{ color: '#666' }}>No variants defined.</p>
+                ) : (
+                  <div>
+                    {merchandiseVariants.map((variant, index) => (
+                      <div key={index} style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '15px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{variant.size} {variant.color && `(${variant.color})`}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                            Price: ₹{variant.price} | Stock: {variant.stock || 'Unlimited'}
+                          </p>
+                        </div>
+                        {editingForm && (
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button
+                              onClick={() => removeVariant(index)}
+                              style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {editingForm && (
+                  <div style={{ marginTop: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Add New Variant</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Size / Variant Name</label>
+                        <input type="text" value={newVariant.size} onChange={(e) => setNewVariant({ ...newVariant, size: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} placeholder="e.g. XL" />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Color (Optional)</label>
+                        <input type="text" value={newVariant.color} onChange={(e) => setNewVariant({ ...newVariant, color: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} placeholder="e.g. Black" />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Stock (0 = inf)</label>
+                        <input type="number" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: parseInt(e.target.value) || 0 })} style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} min="0" />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Price (₹) *</label>
+                        <input type="number" value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: parseFloat(e.target.value) || 0 })} style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }} min="0" />
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <button onClick={addVariant} style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Add</button>
+                      </div>
                     </div>
-                    {editingForm && (
-                      <div style={{ display: 'flex', gap: '5px' }}>
-                        <button onClick={() => moveCustomField(index, -1)} disabled={index === 0} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↑</button>
-                        <button onClick={() => moveCustomField(index, 1)} disabled={index === customFields.length - 1} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↓</button>
-                        <button
-                          onClick={() => removeCustomField(index)}
-                          style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  </div>
+                )}
+              </>
+            ) : (
+              // Normal Custom Fields UI
+              <>
+                {customFields.length === 0 && !editingForm ? (
+                  <p style={{ color: '#666' }}>No custom fields defined. Participants will only fill basic registration info.</p>
+                ) : (
+                  <div>
+                    {customFields.map((field, index) => (
+                      <div key={index} style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '15px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{field.fieldName} {field.required && <span style={{ color: 'red' }}>*</span>}</p>
+                          <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                            Type: {field.fieldType}
+                            {(field.fieldType === 'dropdown' || field.fieldType === 'checkbox' || field.fieldType === 'radio') && field.options?.length > 0 && ` | Options: ${field.options.join(', ')}`}
+                          </p>
+                        </div>
+                        {editingForm && (
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button onClick={() => moveCustomField(index, -1)} disabled={index === 0} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↑</button>
+                            <button onClick={() => moveCustomField(index, 1)} disabled={index === customFields.length - 1} style={{ padding: '4px 8px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>↓</button>
+                            <button
+                              onClick={() => removeCustomField(index)}
+                              style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {editingForm && (
+                  <div style={{ marginTop: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Add New Field</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Field Name</label>
+                        <input
+                          type="text"
+                          value={newField.fieldName}
+                          onChange={(e) => setNewField({ ...newField, fieldName: e.target.value })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                          placeholder="e.g., College Name"
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Type</label>
+                        <select
+                          value={newField.fieldType}
+                          onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
                         >
-                          Remove
+                          <option value="text">Text</option>
+                          <option value="textarea">Textarea</option>
+                          <option value="number">Number</option>
+                          <option value="dropdown">Dropdown</option>
+                          <option value="checkbox">Checkbox</option>
+                          <option value="radio">Radio</option>
+                          <option value="date">Date</option>
+                          <option value="file">File Upload</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>
+                          Options (comma sep, for dropdown)
+                        </label>
+                        <input
+                          type="text"
+                          value={newField.options}
+                          onChange={(e) => setNewField({ ...newField, options: e.target.value })}
+                          style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
+                          placeholder="Option1, Option2"
+                          disabled={newField.fieldType !== 'dropdown' && newField.fieldType !== 'checkbox' && newField.fieldType !== 'radio'}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
+                          <input
+                            type="checkbox"
+                            checked={newField.required}
+                            onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
+                          />
+                          Required
+                        </label>
+                        <button
+                          onClick={addCustomField}
+                          style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                          Add
                         </button>
                       </div>
-                    )}
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
 
             {editingForm && (
-              <div style={{ marginTop: '20px', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
-                <h4 style={{ margin: '0 0 15px 0', fontSize: '14px' }}>Add New Field</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Field Name</label>
-                    <input
-                      type="text"
-                      value={newField.fieldName}
-                      onChange={(e) => setNewField({ ...newField, fieldName: e.target.value })}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                      placeholder="e.g., College Name"
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Type</label>
-                    <select
-                      value={newField.fieldType}
-                      onChange={(e) => setNewField({ ...newField, fieldType: e.target.value })}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    >
-                      <option value="text">Text</option>
-                      <option value="textarea">Textarea</option>
-                      <option value="number">Number</option>
-                      <option value="dropdown">Dropdown</option>
-                      <option value="checkbox">Checkbox</option>
-                      <option value="radio">Radio</option>
-                      <option value="date">Date</option>
-                      <option value="file">File Upload</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>
-                      Options (comma sep, for dropdown)
-                    </label>
-                    <input
-                      type="text"
-                      value={newField.options}
-                      onChange={(e) => setNewField({ ...newField, options: e.target.value })}
-                      style={{ width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                      placeholder="Option1, Option2"
-                      disabled={newField.fieldType !== 'dropdown' && newField.fieldType !== 'checkbox' && newField.fieldType !== 'radio'}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px' }}>
-                      <input
-                        type="checkbox"
-                        checked={newField.required}
-                        onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
-                      />
-                      Required
-                    </label>
-                    <button
-                      onClick={addCustomField}
-                      style={{ padding: '8px 16px', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={saveFormChanges}
-                    style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={() => { setEditingForm(false); setCustomFields(event?.customFields || []); }}
-                    style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={saveFormChanges}
+                  style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => { setEditingForm(false); setCustomFields(event?.customFields || []); setMerchandiseVariants(event?.merchandiseVariants || []); }}
+                  style={{ padding: '10px 20px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
               </div>
             )}
           </div>

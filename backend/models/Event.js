@@ -3,10 +3,10 @@ const mongoose = require('mongoose');
 // Custom form field schema for form builder
 const formFieldSchema = new mongoose.Schema({
     fieldName: { type: String, required: true },
-    fieldType: { 
-        type: String, 
+    fieldType: {
+        type: String,
         enum: ['text', 'textarea', 'number', 'email', 'dropdown', 'select', 'checkbox', 'radio', 'file', 'date'],
-        required: true 
+        required: true
     },
     options: [String], // For dropdown, checkbox, radio
     required: { type: Boolean, default: false },
@@ -92,6 +92,10 @@ const eventSchema = new mongoose.Schema({
         type: Number,
         default: 1
     },
+    upiId: {
+        type: String, // Organizer's UPI ID for payments
+        trim: true
+    },
 
     // Analytics
     viewCount: {
@@ -106,7 +110,7 @@ const eventSchema = new mongoose.Schema({
 eventSchema.index({ eventName: 'text', eventDescription: 'text', eventTags: 'text' });
 
 // Virtual for checking if registration is open
-eventSchema.virtual('isRegistrationOpen').get(function() {
+eventSchema.virtual('isRegistrationOpen').get(function () {
     const now = new Date();
     const deadlinePassed = this.registrationDeadline < now;
     const limitReached = this.registrationLimit && this.registrationCount >= this.registrationLimit;

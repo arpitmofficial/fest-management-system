@@ -21,7 +21,8 @@ const CreateEvent = () => {
     registrationFee: 0,
     eventTags: '',
     customFields: [],
-    merchandiseVariants: []
+    merchandiseVariants: [],
+    upiId: ''
   });
 
   const [newField, setNewField] = useState({
@@ -203,6 +204,13 @@ const CreateEvent = () => {
               <input type="number" name="registrationFee" value={eventData.registrationFee} onChange={handleChange} style={inputStyle} min="0" />
             </label>
 
+            {eventData.eventType === 'merchandise' && (
+              <label style={labelStyle}>
+                UPI ID (For Merchandise Payments)
+                <input type="text" name="upiId" value={eventData.upiId} onChange={handleChange} style={inputStyle} placeholder="e.g. yourname@ybl" />
+              </label>
+            )}
+
             <div style={{ marginTop: '20px' }}>
               <button onClick={() => setStep(1)} style={{ ...buttonStyle, backgroundColor: '#666' }}>Back</button>
               <button onClick={() => setStep(3)} style={buttonStyle}>
@@ -276,10 +284,22 @@ const CreateEvent = () => {
                 <div style={{ border: '1px dashed #ddd', borderRadius: '4px', padding: '15px', marginTop: '15px' }}>
                   <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '500' }}>Add Variant</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
-                    <input type="text" placeholder="Size" value={newVariant.size} onChange={(e) => setNewVariant({ ...newVariant, size: e.target.value })} style={inputStyle} />
-                    <input type="text" placeholder="Color" value={newVariant.color} onChange={(e) => setNewVariant({ ...newVariant, color: e.target.value })} style={inputStyle} />
-                    <input type="number" placeholder="Stock" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: parseInt(e.target.value) || 0 })} style={inputStyle} min="0" />
-                    <input type="number" placeholder="Price" value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: parseFloat(e.target.value) || 0 })} style={inputStyle} min="0" />
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Size / Variant Name</label>
+                      <input type="text" placeholder="e.g. XL, Default" value={newVariant.size} onChange={(e) => setNewVariant({ ...newVariant, size: e.target.value })} style={{ ...inputStyle, marginTop: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Color (Optional)</label>
+                      <input type="text" placeholder="e.g. Black" value={newVariant.color} onChange={(e) => setNewVariant({ ...newVariant, color: e.target.value })} style={{ ...inputStyle, marginTop: 0 }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Stock</label>
+                      <input type="number" placeholder="0 = infinite" value={newVariant.stock} onChange={(e) => setNewVariant({ ...newVariant, stock: parseInt(e.target.value) || 0 })} style={{ ...inputStyle, marginTop: 0 }} min="0" />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', marginBottom: '5px' }}>Price (₹) *</label>
+                      <input type="number" placeholder="Price" value={newVariant.price} onChange={(e) => setNewVariant({ ...newVariant, price: parseFloat(e.target.value) || 0 })} style={{ ...inputStyle, marginTop: 0 }} min="0" />
+                    </div>
                   </div>
                   <button onClick={addVariant} style={{ ...buttonStyle, padding: '8px 15px', marginTop: '10px' }}>Add Variant</button>
                 </div>
