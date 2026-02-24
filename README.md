@@ -67,53 +67,45 @@ The following advanced features were selected to total the required 30 marks. Th
 
 ---
 
-## 💻 Local Setup & Installation
+## 💻 Running the Submission (From ZIP)
 
-Follow these steps to run the application locally.
+Follow these steps to run the application natively for evaluation from the downloaded `2024101112.zip` archive.
 
 ### Prerequisites
 - Node.js (v16 or higher)
-- MongoDB instance (Local or Atlas)
-- Google reCAPTCHA v3 Site Key and Secret Key
+- No `.env` configuration is required. The submitted ZIP specifically includes pre-configured `.env` files mapping to a live MongoDB instance and local API URLs specifically for evaluation ease.
 
-### 1. Backend Setup
-1. Navigate to the backend directory:
+### 1. Extract and Start Backend
+1. Extract `2024101112.zip` and open a terminal inside the extracted directory.
+2. Navigate to the backend directory:
    ```bash
    cd backend
    ```
-2. Install dependencies:
+3. Install dependencies:
    ```bash
    npm install
    ```
-3. Create a `.env` file in the `backend` directory:
-   ```env
-   PORT=5000
-   MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_jwt_secret
-   RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
-   ```
-   *(Ensure you replace the placeholders with actual values)*
-4. Start the development server:
+4. Start the backend server:
    ```bash
    npm run dev
    ```
+   *The backend should now rapidly compile and state it is running on port `5000` via Nodemon.*
 
-### 2. Frontend Setup
-1. Navigate to the frontend directory:
+### 2. Start Frontend
+1. Open a **new** terminal window/tab inside the same extracted directory.
+2. Navigate to the frontend directory:
    ```bash
    cd frontend
    ```
-2. Install dependencies:
+3. Install dependencies:
    ```bash
    npm install
-   ```
-3. Create a `.env` file in the `frontend` directory:
-   ```env
-   VITE_API_BASE_URL=http://localhost:5000/api
-   VITE_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
    ```
 4. Start the Vite development server:
    ```bash
    npm run dev
    ```
-5. Open your browser and navigate to `http://localhost:5173`.
+5. Open your browser and navigate to the localhost URL provided by Vite (usually `http://localhost:5173`).
+
+---
+> **Note to Evaluator:** The frontend `.env` within this zip explicitly maps `VITE_API_BASE_URL` to `http://localhost:5000/api` to ensure it targets your locally running backend. The deployed live Vercel version targets the live Render backend.
